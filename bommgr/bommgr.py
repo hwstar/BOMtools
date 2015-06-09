@@ -29,6 +29,7 @@ defaultMfgr = 'Open Market'
 defaultMpn = 'N/A'
 defaultDb= '/etc/bommgr/parts.db'
 defaultConfig = 'etc/bommgr/bommgr.conf'
+firstPn = '800000-101'
 
 
 
@@ -216,10 +217,14 @@ def nextPN():
      # Get the last used part number and generate the next ID to be used
     cur.execute('SELECT MAX(PartNumber) from pndesc')
     res = cur.fetchone()
-    pn = res[0]
-    (prefix, suffix) = pn.split('-')
-    nextnum = int(prefix) + 1
-    pn = '{prefix:06d}-{suffix:03d}'.format(prefix=nextnum, suffix=101)
+    # If this is the very first part number added use the default for firstpn
+    if res is None or res[0] is None:
+        pn = firstPn
+    else:
+        pn = res[0]
+        (prefix, suffix) = pn.split('-')
+        nextnum = int(prefix) + 1
+        pn = '{prefix:06d}-{suffix:03d}'.format(prefix=nextnum, suffix=101)
     return pn
 
 # Add a new part to the database
@@ -349,10 +354,18 @@ if __name__ == '__main__':
     parser_query.add_argument('item', help='Query item')
     parser_query.add_argument('--by', help='Query by pn or mpn (default)')
     parser_add = subparsers.add_parser('add', help='Add new part')
-    parser_add.add_argument('title', help='Title (Part Description)')
+    parser_add.add_argument('title', help='Title (Part Description)') # title is mandatory for add
     parser_add.add_argument('--mpn', help="Manufacturer's part number")
     parser_add.add_argument('--manufacturer',help="Manufacturer name")
     parser_add.add_argument('--specpn',help="Specify PN")
+    parser_modify = subparsers.add_parser('modify', help='Modify a title, or manufacturer\'s part number (MPN)')
+    parser_modify.add_argument('partnumber',help='Current part number (PN)') # Current is mandatory for modify
+    parser_modify.add_argument('--title',help="Modify a title by PN")
+    parser_modify.add_argument('--curmpn',help="Modify MPN: Specify current MPN for modification")
+    parser_modify.add_argument('--newmpn',help="Modify MPN: Specify new MPN for modification")
+
+
+
 
     # parse the args and die on error
 
@@ -369,7 +382,7 @@ if __name__ == '__main__':
     # Open the database file
 
     # If database specified in args, override default and config path
-    if(args.specdb is not None):
+    if args.specdb is not None:
         db = args.specdb
     else:
         if general is not None:
@@ -380,42 +393,74 @@ if __name__ == '__main__':
     openDB(db)
 
      # if nextpn, print the next available part number
-    if(args.operation is None):
-        print("Error: no operation specified")
+    if args.operation is None:
+        print('Error: no operation specified')
         sys.exit(2)
 
-    if(args.operation == 'nextpn'):
+    if args.operation == 'nextpn':
         print(nextPN())
         sys.exit(0)
 
-    if(args.operation == 'list'):
-        if(args.type == 'manufacturers'):
+    if args.operation == 'list':
+        if args.type == 'manufacturers':
             listMfgrs()
-        elif(args.type is None or args.type == 'parts'): # Default
+        elif args.type is None or args.type == 'parts': # Default
             listParts()
         sys.exit(0)
 
     # Query by pn or mpn (default)
-    if(args.operation == 'query'):
-        if(args.by == 'pn'):
+    if args.operation == 'query' :
+        if args.by == 'pn':
             queryPN(args.item)
-        elif(args.by is None or args.by == 'mpn'): # Default
+        elif args.by is None or args.by == 'mpn': # Default
             queryMPN(args.item)
         sys.exit(0)
 
-    if(args.operation == 'add'):
+    # Add a part number or manufacturer
+    if args.operation == 'add':
         title = args.title
         pn = None
-        if(args.specpn):
+        if args.specpn:
             pn = args.specpn
         mname = defaultMfgr
         if(args.manufacturer):
             mname = args.manufacturer
         mpn = defaultMpn
-        if(args.mpn):
+        if args.mpn:
             mpn = args.mpn
         pn = newPart(title, pn, mname, mpn)
-        print("New part number added: {}".format(pn))
+        print('New part number added: {}'.format(pn))
+
+    # Modify a title or an MPN
+    if args.operation == 'modify':
+        partnumber = args.partnumber
+        if(args.title is not None):
+            res = lookupPN(partnumber)
+            if(res is None):
+                print('Error: no such part number {}'.format(partnumber))
+                sys.exit(2)
+        elif args.curmpn is not None and args.newmpn is not None:
+            res = lookupPN(partnumber)
+            if(res is None):
+                print('Error: no such part number {}'.format(partnumber))
+                sys.exit(2)
+
+            curmpn = args.curmpn
+            newmpn = args.newmpn
+            res = lookupMPN(curmpn)
+            if(res is None):
+                print('Error: no such manufacturer part number {}'.format(curmpn))
+                sys.exit(2)
+
+
+
+        else:
+            print('Error: no operation specified or a required switch is missing')
+            sys.exit(2)
+
+
+
+
 
 
 
