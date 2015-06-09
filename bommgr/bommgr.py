@@ -361,7 +361,10 @@ if __name__ == '__main__':
     # Read the config file, if any
     config = configparser.ConfigParser()
     config.read(args.config)
-    general = config['general']
+    try:
+        general = config['general']
+    except KeyError:
+        general = None
 
     # Open the database file
 
@@ -369,7 +372,10 @@ if __name__ == '__main__':
     if(args.specdb is not None):
         db = args.specdb
     else:
-        db = general.get('db', defaultDb)
+        if general is not None:
+            db = general.get('db', defaultDb)
+        else:
+            db = defaultDb
 
     openDB(db)
 
