@@ -63,3 +63,4 @@ target/
 
 parts.db
 sqlscript
+test.db
