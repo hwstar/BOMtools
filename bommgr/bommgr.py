@@ -25,7 +25,6 @@ import sqlite3
 import argparse
 import configparser
 
-defaultMfgr = 'Open Market'
 defaultMpn = 'N/A'
 defaultDb= '/etc/bommgr/parts.db'
 defaultConfig = 'etc/bommgr/bommgr.conf'
@@ -155,7 +154,6 @@ def lookupMPNByPN(pn):
     for item in res:
         reslist.append({'pn' : item[0],'mid' : item[1], 'mpn' : item[2]})
 
-    print(reslist) # DEBUG
     for i,item in enumerate(reslist):
         # Convert Manufacturer ID to name
         res = lookupMfgrByID(reslist[i]['mid'])
@@ -413,6 +411,15 @@ if __name__ == '__main__':
             db = defaultDb
 
     openDB(db)
+
+    # Look up default manufacturer
+
+    res = lookupMfgrByID('M0000000')
+    if(res is None):
+        defaultMfgr = 'Default MFG Error'
+    else:
+        defaultMfgr = res[0]
+
 
      # if nextpn, print the next available part number
     if args.operation is None:
