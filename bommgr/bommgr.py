@@ -27,7 +27,7 @@ import configparser
 
 defaultMpn = 'N/A'
 defaultDb= '/etc/bommgr/parts.db'
-defaultConfig = 'etc/bommgr/bommgr.conf'
+defaultConfigLocations = ['./bommgr.conf','~/.bommgr/bommgr.conf','/etc/bommgr/bommgr.conf']
 firstPn = '800000-101'
 
 
@@ -365,7 +365,7 @@ if __name__ == '__main__':
     cur = None
     parser = argparse.ArgumentParser(description = 'BOM Manager Utility', prog = 'bommgr.py')
     parser.add_argument('--specdb', help='Specify database file path')
-    parser.add_argument('--config', help='Specify config file path', default=defaultConfig)
+    parser.add_argument('--config', help='Specify config file path', default=None)
     subparsers = parser.add_subparsers(dest = 'operation', help='Run bommgr.py {command} -h for additional help')
     parser_nextpn = subparsers.add_parser('nextpn', help='Get next unassigned part number')
     parser_list = subparsers.add_parser('list', help='Dump list to console')
@@ -403,10 +403,18 @@ if __name__ == '__main__':
 
     # Read the config file, if any
     config = configparser.ConfigParser()
-    config.read(args.config)
+
+    if(args.config is not None):
+        configLocation = args.config
+    else:
+        configLocation = defaultConfigLocations
+
+    config.read(configLocation)
+
     try:
         general = config['general']
     except KeyError:
+        print('Warning: no config file found')
         general = None
 
     # Open the database file
@@ -421,6 +429,10 @@ if __name__ == '__main__':
             db = defaultDb
 
     openDB(db)
+
+    print()
+    print("Info: Database used: {}".format(os.path.abspath(db)))
+    print()
 
     # Look up default manufacturer
 
