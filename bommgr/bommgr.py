@@ -118,7 +118,7 @@ def lookupMfgrByID(mid):
     return res
 
 
-# Lookup manufacturer part number return a tuple (PartNumber, Manufacturer, MPN) if present else None if not present
+# Lookup manufacturer part number return a tuple (PartNumber, Manufacturer, MPN, Manufacturer ID ) if present else None if not present
 
 def lookupMPN(mpn):
     global cur
@@ -137,9 +137,9 @@ def lookupMPN(mpn):
     if res is not None:
         mname = res[0]
     else:
-        raise(ProcessLookupError)
+        raise(ValueError)
 
-    return (pn, mname, mpn)
+    return (pn, mname, mpn, mid)
 
 
 # Lookup MPN by PN, return an array of dicts containing each MPN found for a specific PN
@@ -338,6 +338,28 @@ def queryPN(pn):
         print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format(pn,
             desc, defaultMfgr, defaultMpn))
 
+# Modify title
+
+def modifyTitle(partnumber, newtitle):
+    global cur,conn
+
+    cur.execute('DELETE FROM pndesc WHERE PartNumber=?', [partnumber])
+    cur.execute('INSERT INTO pndesc (PartNumber,Description) VALUES (?,?)',[partnumber, newtitle])
+    conn.commit()
+
+
+
+# Modify mpn
+
+def modifyMPN(partnumber, curmpn, newmpn):
+    global cur,conn
+    res = lookupMPN(curmpn)
+    if res is None:
+        print('Error: Can\'t get current MPN record')
+        raise SystemError
+    cur.execute('DELETE FROM pnmpn WHERE PartNumber=? AND MPN=? ', [partnumber, curmpn])
+    cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)',[partnumber, res[3], newmpn])
+    conn.commit()
 
 
 if __name__ == '__main__':
@@ -434,25 +456,24 @@ if __name__ == '__main__':
     # Modify a title or an MPN
     if args.operation == 'modify':
         partnumber = args.partnumber
+        res = lookupPN(partnumber)
+        if(res is None):
+            print('Error: no such part number {}'.format(partnumber))
+            sys.exit(2)
         if(args.title is not None):
-            res = lookupPN(partnumber)
-            if(res is None):
-                print('Error: no such part number {}'.format(partnumber))
-                sys.exit(2)
+            modifyTitle(partnumber, args.title)
         elif args.curmpn is not None and args.newmpn is not None:
             res = lookupPN(partnumber)
             if(res is None):
                 print('Error: no such part number {}'.format(partnumber))
                 sys.exit(2)
-
             curmpn = args.curmpn
             newmpn = args.newmpn
             res = lookupMPN(curmpn)
             if(res is None):
                 print('Error: no such manufacturer part number {}'.format(curmpn))
                 sys.exit(2)
-
-
+            modifyMPN(partnumber, curmpn, newmpn)
         else:
             print('Error: no operation specified or a required switch is missing')
             sys.exit(2)
