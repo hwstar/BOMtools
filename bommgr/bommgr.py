@@ -378,11 +378,21 @@ if __name__ == '__main__':
     parser_add.add_argument('--mpn', help="Manufacturer's part number")
     parser_add.add_argument('--manufacturer',help="Manufacturer name")
     parser_add.add_argument('--specpn',help="Specify PN")
+
+    # Modify sub-subparser
     parser_modify = subparsers.add_parser('modify', help='Modify a title, or manufacturer\'s part number (MPN)')
-    parser_modify.add_argument('partnumber',help='Current part number (PN)') # Current is mandatory for modify
-    parser_modify.add_argument('--title',help="Modify a title by PN")
-    parser_modify.add_argument('--curmpn',help="Modify MPN: Specify current MPN for modification")
-    parser_modify.add_argument('--newmpn',help="Modify MPN: Specify new MPN for modification")
+    parser_modify_title_subparser = parser_modify.add_subparsers(dest='what', help='Modify a title')
+
+    parser_modify_title = parser_modify_title_subparser.add_parser('title',help='New title/description to use')
+    parser_modify_title.add_argument('partnumber', help='Part number to look up')
+    parser_modify_title.add_argument('title', help='New title to use')
+
+    parser_modify_title = parser_modify_title_subparser.add_parser('mpn',help='New manufacturer\'s part number to use')
+    parser_modify_title.add_argument('partnumber', help='Part number to look up')
+    parser_modify_title.add_argument('curmpn', help='Current MPN')
+    parser_modify_title.add_argument('newmpn', help='New MPN')
+
+
 
 
 
@@ -467,9 +477,9 @@ if __name__ == '__main__':
         if(res is None):
             print('Error: no such part number {}'.format(partnumber))
             sys.exit(2)
-        if(args.title is not None):
+        if args.what == 'title':
             modifyTitle(partnumber, args.title)
-        elif args.curmpn is not None and args.newmpn is not None:
+        elif args.what == 'mpn' :
             res = lookupPN(partnumber)
             if(res is None):
                 print('Error: no such part number {}'.format(partnumber))
@@ -482,7 +492,7 @@ if __name__ == '__main__':
                 sys.exit(2)
             modifyMPN(partnumber, curmpn, newmpn)
         else:
-            print('Error: no operation specified or a required switch is missing')
+            print('Error: unrecognized what option')
             sys.exit(2)
 
 
