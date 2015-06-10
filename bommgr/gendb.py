@@ -67,7 +67,7 @@ conn.execute('CREATE TABLE version (major INTEGER,minor INTEGER)')
 conn.execute('INSERT INTO version (major,minor) VALUES(?,?)', [0,0])
 conn.commit()
 
-#Create the version table
+#Create the config table
 conn.execute('CREATE TABLE config (key TEXT,value TEXT)')
 conn.commit()
 
