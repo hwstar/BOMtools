@@ -109,23 +109,33 @@ def getmfgr(mid):
         return None
 
 # Fetch manufacturer's info from parts database if it exists
+# Return an array of dictionaries containing the matched manufacturers info
 # If the part does not exist, then return default manufacturer as the source is not controlled.
 
 def getmfginfo(pn):
     global cur, defaultMfgr, defaultMPN
-    res = {}
-    res['MFG'] = defaultMfgr
-    res['MPN'] = defaultMPN
+
+    res = []
+    res.append({'MFG': defaultMfgr, 'MPN': defaultMPN})
+
     if len(pn) == 0 :
         return res
+
     cur.execute('SELECT Manufacturer,MPN FROM pnmpn WHERE PartNumber=?', [pn])
-    info = cur.fetchone()
-    if info is not None :
-        res['MPN'] = info[1]
-        mfgid = info[0]
-        minfo = getmfgr(mfgid)
-        if minfo is not None:
-            res['MFG'] = minfo[0]
+    info = cur.fetchall()
+
+    if len(info) :
+        res = []
+        for item in info:
+            d = {}
+            d['MPN'] = item[1]
+            mfgid = item[0]
+            minfo = getmfgr(mfgid)
+            if minfo is not None:
+                d['MFG'] = minfo
+            else:
+                d['MFG'] = defaultMfgr
+            res.append(d)
     return res
 
 # Group consecutive array elements into an array of arrays
@@ -316,20 +326,42 @@ for group in grouped:
     row.append( len(group) ) # Quantity
     row.append(refs) # Reference Designators
 
+    # Attempt part number lookup
+    # if lookup fails, print ????
+
     descr = unk
-    mfginfo = {}
-    mfginfo['MFG'] = unk
-    mfginfo['MPN'] = unk
+    mfginfo = []
+    d = {'MFG':unk, 'MPN':unk}
+    mfginfo.append(d)
     if(pn != unkPn):
+        # Try to get pn from database
         descr = getdescr(pn)
         if(descr != unk):
+            # Try to get manufacturer info from database
+            # This can return muliple entries
             mfginfo = getmfginfo(pn)
 
     row.append(descr)   # Descr
     row.append( c.getValue() )
-    row.append(mfginfo['MFG'])
-    row.append(mfginfo['MPN'])
+    row.append(mfginfo[0]['MFG'])
+    row.append(mfginfo[0]['MPN'])
     writerow( out, row  )
+
+    mfginfo.pop(0)
+    if len(mfginfo) == 0:
+        continue # Process next item in list
+    # If we get here, then there is more than one source for the part number
+    for altsrc in mfginfo:
+        del row[:]
+        row.append( item ) # Repeat Item
+        row.append('') # Blank part number
+        row.append('') # Blank quantity
+        row.append('') # Blank refs
+        row.append('') # Blank descr
+        row.append('') # Schematic value
+        row.append(altsrc['MFG'])
+        row.append(altsrc['MPN'])
+        writerow(out, row)
 
 f.close()
 
