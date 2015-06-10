@@ -13,16 +13,21 @@ and opens the sqlite database to look up other relevant fields based
 on the part number. It then generates a .csv file with all of the
 relevant fields included.
 
+This set of python scripts allows you to define your own part numbers
+which can then reference a title/description and optionally single
+or multiple manufacturers and manufacturer's part numbers.
+
 Part numbers are expected to be in 6-3 format (e.g. 800000-101). You use
 the manager script to add new part numbers like this:
 
-bommgr.py add "XSTR,NPN,GP,50V"
+bommgr.py add part "XSTR,NPN,GP,50V"
 
 This will automatically assign a new part number and spit it out
 when it has been added to the database.
 
-The only requirement is the title/description, but there are other
-options available to customize the new part number in the database.
+The only requirement for part number assignment
+is the title/description, but there are other options available to
+customize the new part number in the database.
 
 You can override the part number and assign a custom part number with
 the --specpn option. This is good for inputting tabulated part numbers
