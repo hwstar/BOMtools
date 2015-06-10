@@ -43,6 +43,12 @@ import kicad_netlist_reader
 import csv
 import sys
 import sqlite3
+import ConfigParser
+import argparse
+
+
+defaultConfigFile = '/etc/bommgr/bommgr.conf'
+defaultDb = '/etc/bommgr/parts.db'
 
 def myEqu(self, other):
     """myEqu is a more advanced equivalence function for components which is
@@ -156,16 +162,46 @@ def pack_ref_designators(inplist):
 # equivalency operator.
 kicad_netlist_reader.comp.__eq__ = myEqu
 
-if len(sys.argv) != 4:
-    print("Usage ", __file__, "<parts database> <generic_netlist.xml> <output.csv>", file=sys.stderr)
-    sys.exit(1)
 
-# Define order of command line arguments
-dbpath = sys.argv[1]
-infile = sys.argv[2]
-outfile = sys.argv[3]
+#command line parser setup
+parser = argparse.ArgumentParser(description = 'BOM merger for kicad', prog = 'bommerge.py')
+parser.add_argument('infile',help='kicad xml input file')
+parser.add_argument('outfile',help='csv output file')
+parser.add_argument('--specdb',help='specify database file to use')
+parser.add_argument('--config',help='specify config file to use')
 
-# Set up the dabase connection
+# parse the args and die on error
+args = parser.parse_args()
+
+if args.config:
+    configfile = args.config
+else:
+    configfile = defaultConfigFile
+
+
+# Attempt to read the config file
+
+Config = ConfigParser.ConfigParser()
+Config.read(configfile)
+try:
+    configdict = dict(Config.items("general"))
+except ConfigParser.NoSectionError:
+    configdict={}
+
+# Decide which db path to use
+
+if args.specdb:
+    dbpath = args.specdb
+elif'db' in configdict:
+    dbpath = configdict['db']
+else:
+    dbpath = defaultDb
+
+infile = args.infile
+outfile = args.outfile
+
+
+# Set up the database connection
 conn = sqlite3.connect(dbpath)
 cur = conn.cursor()
 
