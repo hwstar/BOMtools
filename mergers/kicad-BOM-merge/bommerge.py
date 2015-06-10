@@ -49,6 +49,8 @@ import argparse
 
 defaultConfigFile = '/etc/bommgr/bommgr.conf'
 defaultDb = '/etc/bommgr/parts.db'
+unk = '?????????'
+unkPn = '??????-???'
 
 def myEqu(self, other):
     """myEqu is a more advanced equivalence function for components which is
@@ -81,6 +83,7 @@ def writerow( acsvwriter, columns ):
 # Fetch description from parts database if it exists, otherwise return empty string
 
 def getdescr(pn):
+    global unk
     if len(pn) == 0 :
         return pn
     cur.execute('SELECT Description FROM pndesc WHERE PartNumber=?', [pn])
@@ -89,7 +92,8 @@ def getdescr(pn):
     if(res is not None):
         return res[0].decode('utf-8')
     else:
-        return ''
+        return unk
+
 
 # Fetch manufacturer's info from parts database if it exists
 # If the part does not exist, then return 'Open Market' as the source is not controlled.
@@ -281,13 +285,22 @@ for group in grouped:
 
     item += 1
     row.append( item ) # Item number
-    pn = c.getField('PartNumber', False)
+    pn = c.getField('PartNumber', unkPn)
     row.append(pn) # Part number
     row.append( len(group) ) # Quantity
     row.append(refs) # Reference Designators
-    row.append(getdescr(pn))   # Descr
+
+    descr = unk
+    mfginfo = {}
+    mfginfo['MFG'] = unk
+    mfginfo['MPN'] = unk
+    if(pn != unkPn):
+        descr = getdescr(pn)
+        if(descr != unk):
+            mfginfo = getmfginfo(pn)
+
+    row.append(descr)   # Descr
     row.append( c.getValue() )
-    mfginfo = getmfginfo(pn)
     row.append(mfginfo['MFG'])
     row.append(mfginfo['MPN'])
     writerow( out, row  )
