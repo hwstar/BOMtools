@@ -49,8 +49,10 @@ import argparse
 
 defaultConfigFile = '/etc/bommgr/bommgr.conf'
 defaultDb = '/etc/bommgr/parts.db'
+defaultMPN = 'N/A'
 unk = '?????????'
 unkPn = '??????-???'
+
 
 def myEqu(self, other):
     """myEqu is a more advanced equivalence function for components which is
@@ -95,13 +97,25 @@ def getdescr(pn):
         return unk
 
 
+# Get manufacturer by ID
+
+def getmfgr(mid):
+    global cur
+    cur.execute('SELECT MFGName FROM mlist WHERE MFGId=?', [mid])
+    minfo = cur.fetchone()
+    if minfo is not None:
+        return minfo[0]
+    else:
+        return None
+
 # Fetch manufacturer's info from parts database if it exists
-# If the part does not exist, then return 'Open Market' as the source is not controlled.
+# If the part does not exist, then return default manufacturer as the source is not controlled.
 
 def getmfginfo(pn):
+    global cur, defaultMfgr, defaultMPN
     res = {}
-    res['MFG'] = 'Open Market'
-    res['MPN'] = 'N/A'
+    res['MFG'] = defaultMfgr
+    res['MPN'] = defaultMPN
     if len(pn) == 0 :
         return res
     cur.execute('SELECT Manufacturer,MPN FROM pnmpn WHERE PartNumber=?', [pn])
@@ -109,8 +123,7 @@ def getmfginfo(pn):
     if info is not None :
         res['MPN'] = info[1]
         mfgid = info[0]
-        cur.execute('SELECT MFGName FROM mlist WHERE MFGId=?', [mfgid])
-        minfo = cur.fetchone()
+        minfo = getmfgr(mfgid)
         if minfo is not None:
             res['MFG'] = minfo[0]
     return res
@@ -167,12 +180,17 @@ def pack_ref_designators(inplist):
 kicad_netlist_reader.comp.__eq__ = myEqu
 
 
+
+
+
+
 #command line parser setup
 parser = argparse.ArgumentParser(description = 'BOM merger for kicad', prog = 'bommerge.py')
 parser.add_argument('infile',help='kicad xml input file')
 parser.add_argument('outfile',help='csv output file')
 parser.add_argument('--specdb',help='specify database file to use')
 parser.add_argument('--config',help='specify config file to use')
+
 
 # parse the args and die on error
 args = parser.parse_args()
@@ -208,6 +226,14 @@ outfile = args.outfile
 # Set up the database connection
 conn = sqlite3.connect(dbpath)
 cur = conn.cursor()
+
+
+# Get the default manufactuer from the database
+defaultMfgr = getmfgr('M0000000')
+if(defaultMfgr is None):
+    defaultMfgr = 'Default MFG Error'
+
+
 
 # Generate an instance of a generic netlist, and load the netlist tree from
 # the command line option. If the file doesn't exist, execution will stop

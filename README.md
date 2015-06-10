@@ -60,7 +60,7 @@ The following python2.7 modules are required for bommerge.py:
 kicad_netlist_reader
 csv
 sqlite3
-ArgParse
+argparse
 ConfigParser
 
 When running the parts manager or the kicad merger, the database will
