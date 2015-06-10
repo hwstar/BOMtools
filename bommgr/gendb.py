@@ -59,12 +59,16 @@ conn.commit()
 # Create the mlist table
 
 conn.execute('CREATE TABLE mlist (MFGId TEXT,MFGName TEXT)')
-conn.execute('INSERT INTO mlist (MFGId,MFGName) VALUES (?,?)', ['V0000000','Open Market'])
+conn.execute('INSERT INTO mlist (MFGId,MFGName) VALUES (?,?)', ['M0000000','Open Market'])
 conn.commit()
 
 #Create the version table
 conn.execute('CREATE TABLE version (major INTEGER,minor INTEGER)')
 conn.execute('INSERT INTO version (major,minor) VALUES(?,?)', [0,0])
+conn.commit()
+
+#Create the version table
+conn.execute('CREATE TABLE config (key TEXT,value TEXT)')
 conn.commit()
 
 sys.exit(0)
