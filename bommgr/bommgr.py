@@ -27,10 +27,42 @@ import configparser
 
 defaultMpn = 'N/A'
 defaultDb= '/etc/bommgr/parts.db'
-defaultConfigLocations = ['./bommgr.conf','~/.bommgr/bommgr.conf','/etc/bommgr/bommgr.conf']
+defaultConfigLocations = ['/etc/bommgr/bommgr.conf','~/.bommgr/bommgr.conf','bommgr.conf']
 firstPn = '800000-101'
 
+# Yes/no prompt
 
+def query_yes_no(question, default="yes"):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+
+    The "answer" return value is True for "yes" or False for "no".
+    """
+    valid = {"yes": True, "y": True, "ye": True,
+             "no": False, "n": False}
+    if default is None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = input().lower()
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            sys.stdout.write("Please respond with 'yes' or 'no' "
+                             "(or 'y' or 'n').\n")
 
 def openDB(db):
     # Set up the dabase connection
@@ -61,17 +93,26 @@ def listParts():
     for (pn,desc) in res:
         mfg = defaultMfgr
         mpn = defaultMpn
+        # Try to retrieve manufacturer info
         mfgcur.execute('SELECT Manufacturer,MPN FROM pnmpn WHERE PartNumber=?',[pn])
-        minfo = mfgcur.fetchone()
-        if(minfo is not None):
-            mpn = minfo[1]
-            mfgid = minfo[0]
-            mfgcur.execute('SELECT MFGName FROM mlist WHERE MFGId=?', [mfgid])
-            minfo = mfgcur.fetchone()
-            if(minfo is not None):
-                mfg = minfo[0]
+        minfo = mfgcur.fetchall()
 
-        print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format(pn,desc,mfg,mpn))
+        if minfo == []: # Use defaults if it no MPN and manufacturer
+            minfo =[(defaultMfgr,defaultMpn)]
+
+        for i,item in enumerate(minfo):
+            mpn = item[1]
+            mfgid = item[0]
+            mfgcur.execute('SELECT MFGName FROM mlist WHERE MFGId=?', [mfgid])
+            mninfo = mfgcur.fetchone()
+            if(mninfo is not None):
+                mfg = mninfo[0]
+            else:
+                mfg = defaultMfgr
+            if i > 0:
+                pn = ''
+                desc = ''
+            print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format(pn,desc,mfg,mpn))
 
 
 # List manufacturers
@@ -367,33 +408,70 @@ if __name__ == '__main__':
     parser.add_argument('--specdb', help='Specify database file path')
     parser.add_argument('--config', help='Specify config file path', default=None)
     subparsers = parser.add_subparsers(dest = 'operation', help='Run bommgr.py {command} -h for additional help')
+
     parser_nextpn = subparsers.add_parser('nextpn', help='Get next unassigned part number')
-    parser_list = subparsers.add_parser('list', help='Dump list to console')
-    parser_list.add_argument('--type', help='List manufacturers or parts (default)')
-    parser_query = subparsers.add_parser('query', help='Return parts info')
-    parser_query.add_argument('item', help='Query item')
-    parser_query.add_argument('--by', help='Query by pn or mpn (default)')
+
+    # List sub sub-parser
+    parser_list = subparsers.add_parser('list', help='List items')
+    parser_list_subparser = parser_list.add_subparsers(dest='listwhat', help='List parts or manufacturers')
+
+    parser_list_pn = parser_list_subparser.add_parser('parts', help='List part numbers')
+
+    parser_list_mpn = parser_list_subparser.add_parser('manuf', help='List manufacturers')
+
+
+
+    #parser_list = subparsers.add_parser('list', help='Dump list to console')
+    #parser_list.add_argument('--type', help='List manufacturers or parts (default)')
+
+
+    # Query sub-subparser
+    parser_query = subparsers.add_parser('query', help='Query something')
+    parser_query_subparser = parser_query.add_subparsers(dest='querywhat', help='Query a part or MPN')
+
+    parser_query_pn = parser_query_subparser.add_parser('pn', help='Query part number')
+    parser_query_pn.add_argument('partnumber', help='Part Number')
+
+    parser_query_mpn = parser_query_subparser.add_parser('mpn', help='Query manufacturer\'s part number')
+    parser_query_mpn.add_argument('mpartnumber', help='Part Number')
+
+
+    # Add sub-subparser
     parser_add = subparsers.add_parser('add', help='Add new part')
-    parser_add.add_argument('title', help='Title (Part Description)') # title is mandatory for add
-    parser_add.add_argument('--mpn', help="Manufacturer's part number")
-    parser_add.add_argument('--manufacturer',help="Manufacturer name")
-    parser_add.add_argument('--specpn',help="Specify PN")
+    parser_add_subparser = parser_add.add_subparsers(dest='addwhat', help='Add a part or MPN')
+
+    # Add part
+    parser_add_part = parser_add_subparser.add_parser('part',help='Add part')
+    parser_add_part.add_argument('title', help='Title (Part Description)') # title is mandatory for add part
+    parser_add_part.add_argument('--mpn', help="Manufacturer's part number")
+    parser_add_part.add_argument('--manufacturer',help="Manufacturer name")
+    parser_add_part.add_argument('--specpn',help="Specify PN")
+
+    # Add mpn
+    parser_add_mpn = parser_add_subparser.add_parser('altmpn',help='Add alternate MPN to existing part')
+    parser_add_mpn.add_argument('part', help='Part number') # part number is mandatory for add mpn
+    parser_add_mpn.add_argument('mpn', help='Manufacturer Part number') # part number is mandatory for add mpn
+    parser_add_mpn.add_argument('manufacturer', help='Manufacturer Name') # Manufacturer name is mandatory
+    parser_add_mpn.add_argument('--newmfg', action='store_true', help="Add new manufacturer from name given")
+
 
     # Modify sub-subparser
     parser_modify = subparsers.add_parser('modify', help='Modify a title, or manufacturer\'s part number (MPN)')
-    parser_modify_title_subparser = parser_modify.add_subparsers(dest='what', help='Modify a title')
+    parser_modify_title_subparser = parser_modify.add_subparsers(dest='modifywhat', help='Modify a title')
 
+    # Modify title
     parser_modify_title = parser_modify_title_subparser.add_parser('title',help='New title/description to use')
     parser_modify_title.add_argument('partnumber', help='Part number to look up')
     parser_modify_title.add_argument('title', help='New title to use')
 
+    # Modify MPN
     parser_modify_title = parser_modify_title_subparser.add_parser('mpn',help='New manufacturer\'s part number to use')
     parser_modify_title.add_argument('partnumber', help='Part number to look up')
     parser_modify_title.add_argument('curmpn', help='Current MPN')
     parser_modify_title.add_argument('newmpn', help='New MPN')
 
 
-
+# Print a y/n prompt and wait for input
 
 
 
@@ -453,34 +531,75 @@ if __name__ == '__main__':
         sys.exit(0)
 
     if args.operation == 'list':
-        if args.type == 'manufacturers':
+        if args.listwhat == 'manuf':
             listMfgrs()
-        elif args.type is None or args.type == 'parts': # Default
+        elif args.listwhat == 'parts':
             listParts()
         sys.exit(0)
 
-    # Query by pn or mpn (default)
+    # Query by pn or mpn
     if args.operation == 'query' :
-        if args.by == 'pn':
-            queryPN(args.item)
-        elif args.by is None or args.by == 'mpn': # Default
-            queryMPN(args.item)
+        if args.querywhat == 'pn':
+            queryPN(args.partnumber)
+        elif args.querywhat == 'mpn':
+            queryMPN(args.mpartnumber)
         sys.exit(0)
 
     # Add a part number or manufacturer
     if args.operation == 'add':
-        title = args.title
-        pn = None
-        if args.specpn:
-            pn = args.specpn
-        mname = defaultMfgr
-        if(args.manufacturer):
-            mname = args.manufacturer
-        mpn = defaultMpn
-        if args.mpn:
+        if args.addwhat == 'part':
+            title = args.title
+            pn = None
+            if args.specpn:
+                pn = args.specpn
+            mname = defaultMfgr
+            if(args.manufacturer):
+                mname = args.manufacturer
+            mpn = defaultMpn
+            if args.mpn:
+                mpn = args.mpn
+            pn = newPart(title, pn, mname, mpn)
+            print('New part number added: {}'.format(pn))
+        elif args.addwhat == 'altmpn':
+            pn = args.part
             mpn = args.mpn
-        pn = newPart(title, pn, mname, mpn)
-        print('New part number added: {}'.format(pn))
+            mname = args.manufacturer
+            res = lookupPN(pn)
+            # Sanity checks
+            if res is None :
+                print('Error: no such part number {}'.format(pn))
+                sys.exit(2)
+            desc = res[1]
+            res = lookupMPN(mpn)
+            if res is not None:
+                print('Error: MPN {} is already in the database'.format(mpn))
+                sys.exit(2)
+            minfo = lookupMfgr(mname)
+            if args.newmfg is False and minfo is None:
+                print('Error: Manufacturer {} is not in the database. Add with --newmfg'.format(mname))
+                sys.exit(2)
+            if True:
+                print('About to add:')
+                print()
+                print("MPN            : {}".format(mpn))
+                print("Manufacturer   : {}".format(mname))
+                print()
+                print("to {}, {}".format(pn, desc))
+                print()
+                if query_yes_no('Add alternate mpn?','no') is False:
+                    sys.exit(0)
+            if(minfo is None): # Add new manufacturer if it doesn't exist
+                addMfgr(mname)
+                minfo=lookupMfgr(mname)
+            mid = minfo[1]
+             # Insert part number, manufacturer id, and manufactuer part number
+            cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)', [pn, mid, mpn])
+            conn.commit()
+            print("Alternate MPN added")
+
+        else:
+            print('Unrecognized addwhat option')
+            sys.exit(2)
 
     # Modify a title or an MPN
     if args.operation == 'modify':
@@ -489,11 +608,11 @@ if __name__ == '__main__':
         if(res is None):
             print('Error: no such part number {}'.format(partnumber))
             sys.exit(2)
-        if args.what == 'title':
+        if args.modifywhat == 'title':
             modifyTitle(partnumber, args.title)
         elif args.what == 'mpn' :
             res = lookupPN(partnumber)
-            if(res is None):
+            if res is None :
                 print('Error: no such part number {}'.format(partnumber))
                 sys.exit(2)
             curmpn = args.curmpn
@@ -504,7 +623,7 @@ if __name__ == '__main__':
                 sys.exit(2)
             modifyMPN(partnumber, curmpn, newmpn)
         else:
-            print('Error: unrecognized what option')
+            print('Error: unrecognized modifywhat option')
             sys.exit(2)
 
 
