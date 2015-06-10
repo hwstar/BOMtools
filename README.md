@@ -44,7 +44,7 @@ by calling it from kicad.
 
 The output will look like this when imported into your spreadsheet:
 
-![ProjectPicture](Screenshot.jpg)
+![ProjectPicture](Screenshot.png)
 
 
 *Installation*
