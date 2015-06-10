@@ -64,7 +64,7 @@ ArgParse
 ConfigParser
 
 When running the parts manager or the kicad merger, the database will
-need to be created. A separate script, dbinit.py in the bommgr
+need to be created. A separate script, gendb.py in the bommgr
 directory does this.
 
 *Notice*
