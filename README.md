@@ -42,6 +42,10 @@ by part number or manufacturer.
 Once all your parts are in the database, you can run the merge program
 by calling it from kicad. 
 
+The output will look like this when imported into your spreadsheet:
+
+![ProjectPicture](Screenshot.jpg)
+
 
 *Installation*
 
