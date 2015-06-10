@@ -420,11 +420,6 @@ if __name__ == '__main__':
     parser_list_mpn = parser_list_subparser.add_parser('manuf', help='List manufacturers')
 
 
-
-    #parser_list = subparsers.add_parser('list', help='Dump list to console')
-    #parser_list.add_argument('--type', help='List manufacturers or parts (default)')
-
-
     # Query sub-subparser
     parser_query = subparsers.add_parser('query', help='Query something')
     parser_query_subparser = parser_query.add_subparsers(dest='querywhat', help='Query a part or MPN')
