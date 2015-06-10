@@ -58,7 +58,7 @@ def listParts():
     mfgcur = conn.cursor()
     cur.execute('SELECT Partnumber,Description FROM pndesc')
     res = cur.fetchall()
-    print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format("Part Num","Title","Manufacturer","MPN"))
+    print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format("Part Num","Title/Description","Manufacturer","MPN"))
     for (pn,desc) in res:
         mfg = defaultMfgr
         mpn = defaultMpn
@@ -313,7 +313,7 @@ def queryMPN(mpn):
     res = lookupPN(pn)
     desc = res[1]
 
-    print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format("Part Num","Title","Manufacturer","MPN"))
+    print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format("Part Num","Title/Description","Manufacturer","MPN"))
     print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format(pn, desc ,mname , mpn))
 
 
@@ -328,7 +328,7 @@ def queryPN(pn):
         return
     pn = res[0]
     desc = res[1]
-    print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format("Part Num","Description","Manufacturer","MPN"))
+    print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format("Part Num","Title/Description","Manufacturer","MPN"))
     res = lookupMPNByPN(pn)
     if(len(res) is not 0):
         for item in res:
@@ -451,7 +451,6 @@ if __name__ == '__main__':
             if(res is None):
                 print('Error: no such manufacturer part number {}'.format(curmpn))
                 sys.exit(2)
-
 
 
         else:
