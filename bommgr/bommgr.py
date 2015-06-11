@@ -466,9 +466,11 @@ if __name__ == '__main__':
     parser_modify_title.add_argument('newmpn', help='New MPN')
 
 
-# Print a y/n prompt and wait for input
 
+    # Customize default configurations to user's home directory
 
+    for i in range(0, len(defaultConfigLocations)):
+        defaultConfigLocations[i] = os.path.expanduser(defaultConfigLocations[i])
 
     # parse the args and die on error
 
@@ -478,7 +480,7 @@ if __name__ == '__main__':
     config = configparser.ConfigParser()
 
     if(args.config is not None):
-        configLocation = args.config
+        configLocation = os.path.expanduser(args.config)
     else:
         configLocation = defaultConfigLocations
 
@@ -494,10 +496,11 @@ if __name__ == '__main__':
 
     # If database specified in args, override default and config path
     if args.specdb is not None:
-        db = args.specdb
+        db = os.path.expanduser(args.specdb)
     else:
         if general is not None:
-            db = general.get('db', defaultDb)
+            db = os.path.expanduser(general.get('db', defaultDb))
+            print(db)
         else:
             db = defaultDb
 

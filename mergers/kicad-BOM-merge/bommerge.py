@@ -42,12 +42,12 @@ import string
 import kicad_netlist_reader
 import csv
 import sys
+import os
 import sqlite3
 import ConfigParser
 import argparse
 
-
-defaultConfigFile = '/etc/bommgr/bommgr.conf'
+defaultConfigLocations = ['/etc/bommgr/bommgr.conf','~/.bommgr/bommgr.conf','bommgr.conf']
 defaultDb = '/etc/bommgr/parts.db'
 defaultMPN = 'N/A'
 unk = '?????????'
@@ -189,9 +189,10 @@ def pack_ref_designators(inplist):
 # equivalency operator.
 kicad_netlist_reader.comp.__eq__ = myEqu
 
+# Customize default configurations to user's home directory
 
-
-
+for i in range(0, len(defaultConfigLocations)):
+    defaultConfigLocations[i] = os.path.expanduser(defaultConfigLocations[i])
 
 
 #command line parser setup
@@ -205,16 +206,17 @@ parser.add_argument('--config',help='specify config file to use')
 # parse the args and die on error
 args = parser.parse_args()
 
-if args.config:
-    configfile = args.config
+
+if(args.config is not None):
+    configLocation = os.path.expanduser(args.config)
 else:
-    configfile = defaultConfigFile
+    configLocation = defaultConfigLocations
 
 
 # Attempt to read the config file
 
 Config = ConfigParser.ConfigParser()
-Config.read(configfile)
+Config.read(configLocation)
 try:
     configdict = dict(Config.items("general"))
 except ConfigParser.NoSectionError:
@@ -223,11 +225,13 @@ except ConfigParser.NoSectionError:
 # Decide which db path to use
 
 if args.specdb:
-    dbpath = args.specdb
+    dbpath = os.path.expanduser(args.specdb)
 elif'db' in configdict:
-    dbpath = configdict['db']
+    dbpath = os.path.expanduser(configdict['db'])
 else:
     dbpath = defaultDb
+
+print('Info: Using database file {}'.format(dbpath))
 
 infile = args.infile
 outfile = args.outfile
