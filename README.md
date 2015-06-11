@@ -5,6 +5,10 @@ This is a set of python scripts for managing parts in a kicad schematic
 
 *Introduction*
 
+This set of python scripts allows you to define your own part numbers
+which can then reference a title/description and optionally single
+or multiple manufacturers and manufacturer's part numbers.
+
 The project consists of a BOM manager script (bommgr.py) written in
 python 3 and a merger script for kicad xml files written in python 2.7.
 
@@ -12,10 +16,6 @@ The merger script looks for a PartNumber field in the kicad xml file,
 and opens the sqlite database to look up other relevant fields based
 on the part number. It then generates a .csv file with all of the
 relevant fields included.
-
-This set of python scripts allows you to define your own part numbers
-which can then reference a title/description and optionally single
-or multiple manufacturers and manufacturer's part numbers.
 
 Part numbers are expected to be in 6-3 format (e.g. 800000-101). You use
 the manager script to add new part numbers like this:
@@ -33,7 +33,7 @@ You can override the part number and assign a custom part number with
 the --specpn option. This is good for inputting tabulated part numbers
 (i.e. a series of connectors).
 
-You can specify a manufacturer with the --manufacturer option and a
+You can specify a manufacturer with the --mfg option and a
 manufacturer's part number with the --mpn option. For new parts entered
 without these options, the default values will be used:
 
