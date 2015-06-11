@@ -1,13 +1,48 @@
 
+import argparse
+import configparser
+import os
 import csv
 import json
 import urllib3
 import urllib.parse
 from decimal import Decimal
 
+defaultConfigLocations = ['/etc/bommgr/bommgr.conf','~/.bommgr/bommgr.conf','bommgr.conf']
+
+# Customize default configurations to user's home directory
+
+for i in range(0, len(defaultConfigLocations)):
+    defaultConfigLocations[i] = os.path.expanduser(defaultConfigLocations[i])
+
+
+parser = argparse.ArgumentParser(description = 'BOM Costing Utility', prog = 'bomcost.py')
+parser.add_argument('infile', help="input: BOM file in .csv format")
+parser.add_argument('outfile', help="output: Costed BOM file in .csv format")
+parser.add_argument('--config', help='Specify config file path', default=None)
+
+
+# parse the args and die on error
+
+args = parser.parse_args()
+
+# Read the config file, if any
+config = configparser.ConfigParser()
+
+if(args.config is not None):
+    configLocation = os.path.expanduser(args.config)
+else:
+    configLocation = defaultConfigLocations
+
+config.read(configLocation)
+
+# Configure urrllib3 pool
+
 http = urllib3.PoolManager(2)
 
-csv_file = open("/home/srodgers/projects/kicad/weather-station/weather-station.csv", "r")
+
+
+csv_file = open(args.infile, "r")
 csv_reader = csv.DictReader(csv_file)
 line_items = []
 queries = []
@@ -29,8 +64,7 @@ for i in range(0, len(queries), 20):
     # parts match endpoint
     batched_queries = queries[i: i + 20]
 
-    url = 'http://octopart.com/api/v3/parts/match?queries=%s' \
-        % urllib.parse.quote(json.dumps(batched_queries))
+    url = 'http://octopart.com/api/v3/parts/match?queries={}'.format(urllib.parse.quote(json.dumps(batched_queries)))
     url += '&apikey=16d032b7'
     #data = urllib3.urlopen(url).read()
     r = http.request('GET', url)
