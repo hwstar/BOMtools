@@ -605,7 +605,7 @@ if __name__ == '__main__':
             sys.exit(2)
         if args.modifywhat == 'title':
             modifyTitle(partnumber, args.title)
-        elif args.what == 'mpn' :
+        elif args.modifywhat == 'mpn' :
             res = lookupPN(partnumber)
             if res is None :
                 print('Error: no such part number {}'.format(partnumber))
