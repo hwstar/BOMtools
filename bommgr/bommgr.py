@@ -87,7 +87,7 @@ def listParts():
     global cur, conn, defaultMpn, defaultMfgr
 
     mfgcur = conn.cursor()
-    cur.execute('SELECT Partnumber,Description FROM pndesc')
+    cur.execute('SELECT Partnumber,Description FROM pndesc ORDER BY PartNumber ASC')
     res = cur.fetchall()
     print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format("Part Num","Title/Description","Manufacturer","MPN"))
     for (pn,desc) in res:
@@ -121,7 +121,7 @@ def listParts():
 def listMfgrs():
     global conn,cur
     print('{0:<30}'.format("Manufacturer"))
-    cur.execute('SELECT MFGName FROM mlist ')
+    cur.execute('SELECT MFGName FROM mlist ORDER BY MFGName ASC')
     minfo = cur.fetchall()
     minfo = sorted(minfo)
     if(minfo is not None):
@@ -417,7 +417,7 @@ if __name__ == '__main__':
 
     parser_list_pn = parser_list_subparser.add_parser('parts', help='List part numbers')
 
-    parser_list_mpn = parser_list_subparser.add_parser('manuf', help='List manufacturers')
+    parser_list_mpn = parser_list_subparser.add_parser('mfg', help='List manufacturers')
 
 
     # Query sub-subparser
@@ -526,10 +526,14 @@ if __name__ == '__main__':
         sys.exit(0)
 
     if args.operation == 'list':
-        if args.listwhat == 'manuf':
+        if args.listwhat == 'mfg':
             listMfgrs()
         elif args.listwhat == 'parts':
             listParts()
+        else:
+            print('Error: unknown list option {}'.format(args.listwhat))
+            sys.exit(2)
+
         sys.exit(0)
 
     # Query by pn or mpn
@@ -538,6 +542,9 @@ if __name__ == '__main__':
             queryPN(args.partnumber)
         elif args.querywhat == 'mpn':
             queryMPN(args.mpartnumber)
+        else:
+            print('Error: unknown query option {}'.format(args.querywhat))
+            sys.exit(2)
         sys.exit(0)
 
     # Add a part number or manufacturer
