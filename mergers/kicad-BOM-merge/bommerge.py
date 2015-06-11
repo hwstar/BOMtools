@@ -278,11 +278,6 @@ out = csv.writer( f, lineterminator='\n', delimiter=',', quotechar='\"', quoting
 
 
 row = []
-
-writerow( out, [] )                        # blank line
-writerow( out, [] )                        # blank line
-writerow( out, [] )                        # blank line
-writerow( out, [] )                        # blank line
 writerow( out, columns )                   # column header
 
 
