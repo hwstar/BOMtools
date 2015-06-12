@@ -1,7 +1,8 @@
 **BOMtools**
 =========
-This is a set of python scripts for managing parts in a kicad schematic 
-(other schematic capture packages may be supported in the future)
+This is a set of python scripts for managing and costing parts in a kicad schematic 
+(other schematic capture packages may be supported in the future). A costing script for
+adding costing columns using the Octopart json API is also included.
 
 *Introduction*
 
@@ -10,12 +11,17 @@ which can then reference a title/description and optionally single
 or multiple manufacturers and manufacturer's part numbers.
 
 The project consists of a BOM manager script (bommgr.py) written in
-python 3 and a merger script for kicad xml files written in python 2.7.
+python 3, a BOM costing script written in python 3,
+and a merger script for kicad xml files written in python 2.7.
+
+*bommerge.py*
 
 The merger script looks for a PartNumber field in the kicad xml file,
 and opens the sqlite database to look up other relevant fields based
 on the part number. It then generates a .csv file with all of the
 relevant fields included.
+
+*bommgr.py*
 
 Part numbers are expected to be in 6-3 format (e.g. 800000-101). You use
 the manager script to add new part numbers like this:
@@ -51,6 +57,19 @@ The output will look like this when imported into your spreadsheet:
 
 ![ProjectPicture](Screenshot.png)
 
+*bomcost.py*
+
+The bomcost script takes the csv file from BOMmerge and uses the Octopart
+API to add vendor and cost columns for every part match returned by Octopart.
+It then spits out a new csv file with the additional columns. 
+
+The bomcost script uses a section bommgr.conf to set approved vendors, excluded
+packaging (Such as custom reels), and the currency to quote the parts
+in. See the sample bommgr.conf for details. Here is a sample of the costed 
+output imported into a spreadsheet:
+
+![ProjectPicture](ScreenshotCost.png)
+
 
 *Installation*
 
@@ -67,6 +86,16 @@ csv
 sqlite3
 argparse
 ConfigParser
+
+The following python3 modules are required for bomcost.py:
+
+argparse
+configparser
+csv
+json
+urllib3
+urllib.parse
+decimal
 
 When running the parts manager or the kicad merger, the database will
 need to be created. A separate script, gendb.py in the bommgr
