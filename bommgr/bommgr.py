@@ -83,11 +83,14 @@ def openDB(db):
 
 # List part numbers, descriptions, manufacturers, manufacturer part numbers
 
-def listParts():
+def listParts(like=None):
     global cur, conn, defaultMpn, defaultMfgr
 
     mfgcur = conn.cursor()
-    cur.execute('SELECT Partnumber,Description FROM pndesc ORDER BY PartNumber ASC')
+    if like != None:
+        cur.execute('SELECT Partnumber,Description FROM pndesc WHERE Description LIKE ? ORDER BY PartNumber ASC',[like])
+    else:
+        cur.execute('SELECT Partnumber,Description FROM pndesc ORDER BY PartNumber ASC')
     res = cur.fetchall()
     print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format("Part Num","Title/Description","Manufacturer","MPN"))
     for (pn,desc) in res:
@@ -429,6 +432,7 @@ if __name__ == '__main__':
     parser_list_subparser = parser_list.add_subparsers(dest='listwhat', help='List parts or manufacturers')
 
     parser_list_pn = parser_list_subparser.add_parser('parts', help='List part numbers')
+    parser_list_pn.add_argument('--like', help="Return like matches only")
 
     parser_list_mpn = parser_list_subparser.add_parser('mfg', help='List manufacturers')
 
@@ -553,7 +557,7 @@ if __name__ == '__main__':
         if args.listwhat == 'mfg':
             listMfgrs()
         elif args.listwhat == 'parts':
-            listParts()
+            listParts(args.like)
         else:
             print('Error: unknown list option {}'.format(args.listwhat))
             sys.exit(2)
@@ -575,9 +579,10 @@ if __name__ == '__main__':
     if args.operation == 'add':
         if args.addwhat == 'part':
             title = args.title
-            pn = None
             if args.specpn:
                 pn = args.specpn
+            else:
+                pn = nextPN()
             mname = defaultMfgr
             if args.manufacturer:
                 mname = args.manufacturer
@@ -590,7 +595,7 @@ if __name__ == '__main__':
                 print("MPN            : {}".format(mpn))
                 print("Manufacturer   : {}".format(mname))
                 print()
-                print("as {}, {}".format(nextPN(), title))
+                print("as {}, {}".format(pn, title))
                 print()
                 if query_yes_no('Add new part?','no') is False:
                     sys.exit(0)
