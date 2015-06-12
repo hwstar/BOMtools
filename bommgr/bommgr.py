@@ -386,8 +386,6 @@ def modifyTitle(partnumber, newtitle):
     cur.execute('INSERT INTO pndesc (PartNumber,Description) VALUES (?,?)',[partnumber, newtitle])
     conn.commit()
 
-
-
 # Modify mpn
 
 def modifyMPN(partnumber, curmpn, newmpn):
@@ -400,6 +398,21 @@ def modifyMPN(partnumber, curmpn, newmpn):
     cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)',[partnumber, res[3], newmpn])
     conn.commit()
 
+# Modify manufacturer name for a given part number and MPN
+
+def modifyMFG(partnumber, curmpn, newmfgid):
+    global cur,conn
+    res = lookupMPN(curmpn)
+    if res is None:
+        print('Error: Unknown MPN {}'.format(curmpn))
+        raise SystemError
+    res = lookupMfgrByID(newmfgid)
+    if res is None:
+        print('Error: Unknown manufacturer ID {}'.format(newmfgid))
+        raise SystemError
+    cur.execute('DELETE FROM pnmpn WHERE PartNumber=? AND MPN=? ', [partnumber, curmpn])
+    cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)',[partnumber, newmfgid, curmpn])
+    conn.commit()
 
 if __name__ == '__main__':
     conn = None
@@ -440,14 +453,14 @@ if __name__ == '__main__':
     parser_add_part.add_argument('title', help='Title (Part Description)') # title is mandatory for add part
     parser_add_part.add_argument('--mpn', dest="mpn", help="Manufacturer's part number")
     parser_add_part.add_argument('--mfg', dest="manufacturer", help="Manufacturer name")
-    parser_add_part.add_argument('--specpn',help="Specify PN")
+    parser_add_part.add_argument('--specpn', help="Specify PN")
 
     # Add mpn
     parser_add_mpn = parser_add_subparser.add_parser('altmpn',help='Add alternate MPN to existing part')
     parser_add_mpn.add_argument('part', help='Part number') # part number is mandatory for add mpn
     parser_add_mpn.add_argument('mpn', help='Manufacturer Part number') # part number is mandatory for add mpn
     parser_add_mpn.add_argument('manufacturer', help='Manufacturer Name') # Manufacturer name is mandatory
-    parser_add_mpn.add_argument('--newmfg', action='store_true', help="Add new manufacturer from name given")
+    parser_add_mpn.add_argument('--forcenewmfg', action='store_true', help="Force add of new manufacturer from name given")
 
 
     # Modify sub-subparser
@@ -460,10 +473,18 @@ if __name__ == '__main__':
     parser_modify_title.add_argument('title', help='New title to use')
 
     # Modify MPN
-    parser_modify_title = parser_modify_title_subparser.add_parser('mpn',help='New manufacturer\'s part number to use')
-    parser_modify_title.add_argument('partnumber', help='Part number to look up')
-    parser_modify_title.add_argument('curmpn', help='Current MPN')
-    parser_modify_title.add_argument('newmpn', help='New MPN')
+    parser_modify_mpn = parser_modify_title_subparser.add_parser('mpn',help='New manufacturer\'s part number to use')
+    parser_modify_mpn.add_argument('partnumber', help='Part number to look up')
+    parser_modify_mpn.add_argument('curmpn', help='Current MPN')
+    parser_modify_mpn.add_argument('newmpn', help='New MPN')
+
+    # Modify MFG
+    parser_modify_mfg = parser_modify_title_subparser.add_parser('mfg',help='New manufacturer to use')
+    parser_modify_mfg.add_argument('partnumber', help='Part number to look up')
+    parser_modify_mfg.add_argument('curmpn', help='Current MPN')
+    parser_modify_mfg.add_argument('manufacturer', help='New Manufacturer')
+    parser_modify_mfg.add_argument('--forcenewmfg', action='store_true', help="Force add of new manufacturer from name given")
+
 
 
 
@@ -558,11 +579,21 @@ if __name__ == '__main__':
             if args.specpn:
                 pn = args.specpn
             mname = defaultMfgr
-            if(args.manufacturer):
+            if args.manufacturer:
                 mname = args.manufacturer
             mpn = defaultMpn
             if args.mpn:
                 mpn = args.mpn
+            if True:
+                print('About to add:')
+                print()
+                print("MPN            : {}".format(mpn))
+                print("Manufacturer   : {}".format(mname))
+                print()
+                print("as {}, {}".format(nextPN(), title))
+                print()
+                if query_yes_no('Add new part?','no') is False:
+                    sys.exit(0)
             pn = newPart(title, pn, mname, mpn)
             print('New part number added: {}'.format(pn))
         elif args.addwhat == 'altmpn':
@@ -580,8 +611,8 @@ if __name__ == '__main__':
                 print('Error: MPN {} is already in the database'.format(mpn))
                 sys.exit(2)
             minfo = lookupMfgr(mname)
-            if args.newmfg is False and minfo is None:
-                print('Error: Manufacturer {} is not in the database. Add with --newmfg'.format(mname))
+            if args.forcenewmfg is False and minfo is None:
+                print('Error: Manufacturer {} is not in the database. Add with --forcenewmfg'.format(mname))
                 sys.exit(2)
             if True:
                 print('About to add:')
@@ -613,13 +644,13 @@ if __name__ == '__main__':
         if(res is None):
             print('Error: no such part number {}'.format(partnumber))
             sys.exit(2)
+
+        # Modify title
         if args.modifywhat == 'title':
             modifyTitle(partnumber, args.title)
+
+        # Modify mpn
         elif args.modifywhat == 'mpn' :
-            res = lookupPN(partnumber)
-            if res is None :
-                print('Error: no such part number {}'.format(partnumber))
-                sys.exit(2)
             curmpn = args.curmpn
             newmpn = args.newmpn
             res = lookupMPN(curmpn)
@@ -627,6 +658,29 @@ if __name__ == '__main__':
                 print('Error: no such manufacturer part number {}'.format(curmpn))
                 sys.exit(2)
             modifyMPN(partnumber, curmpn, newmpn)
+
+        # Modify manufacturer
+        elif args.modifywhat == 'mfg':
+            curmpn = args.curmpn
+            mfgr = args.manufacturer
+            res = lookupMPN(curmpn)
+            if(res is None):
+                print('Error: no such manufacturer part number {}'.format(curmpn))
+                sys.exit(2)
+            # See if mfgr already exists
+            res = lookupMfgr(mfgr)
+            if res is None:
+                if args.forcenewmfg:
+                    # Create new manufacturer
+                    addMfgr(mfgr)
+                    # Get the newly assigned mid
+                    res = lookupMfgr(mfgr)
+                else:
+                    print('Error: Manufacturer {} not in database. Add with --forcenewmfg'.format(mfgr))
+                    sys.exit(2)
+            mid = res[1]
+            modifyMFG(partnumber, curmpn, mid)
+
         else:
             print('Error: unrecognized modifywhat option')
             sys.exit(2)
