@@ -438,8 +438,8 @@ if __name__ == '__main__':
     # Add part
     parser_add_part = parser_add_subparser.add_parser('part',help='Add part')
     parser_add_part.add_argument('title', help='Title (Part Description)') # title is mandatory for add part
-    parser_add_part.add_argument('--mpn', help="Manufacturer's part number")
-    parser_add_part.add_argument('--mfg',help="Manufacturer name")
+    parser_add_part.add_argument('--mpn', dest="mpn", help="Manufacturer's part number")
+    parser_add_part.add_argument('--mfg', dest="manufacturer", help="Manufacturer name")
     parser_add_part.add_argument('--specpn',help="Specify PN")
 
     # Add mpn
