@@ -50,8 +50,8 @@ import argparse
 defaultConfigLocations = ['/etc/bommgr/bommgr.conf','~/.bommgr/bommgr.conf','bommgr.conf']
 defaultDb = '/etc/bommgr/parts.db'
 defaultMPN = 'N/A'
-unk = '?????????'
-unkPn = '??????-???'
+unk = 'Unknown'
+unkPn = 'XXXXXX-XXX'
 
 
 def myEqu(self, other):
@@ -320,7 +320,9 @@ for group in grouped:
 
     item += 1
     row.append( item ) # Item number
-    pn = c.getField('PartNumber', unkPn)
+    pn = c.getField('PartNumber')
+    if(pn==''):
+        pn = unkPn
     row.append(pn) # Part number
     row.append( len(group) ) # Quantity
     row.append(refs) # Reference Designators
