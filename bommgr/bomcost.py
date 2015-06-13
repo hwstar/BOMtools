@@ -155,8 +155,27 @@ for result in results:
             print("Did not find match on line item %s" % line_item)
         continue
 
+
+
+    # Alternate sources do not have a complete set of fields
+    # Back up until we reach the first source field which is complete
+
+    refFirstSource = result['reference']
+    refpn = line_item['Part Number']
+    quantity = 0
+    while True:
+        quantity = line_items[refFirstSource]['Qty']
+        if len(quantity):
+            break
+        if refFirstSource and refpn == line_items[refFirstSource]['Part Number']:
+            refFirstSource-=1
+        else:
+            print("Error: Can't determine quantity for second source")
+            raise SystemError
+
     # Get pricing from the first item for desired quantity
-    quantity = Decimal(line_items[result['reference']]['Qty'])
+    quantity = Decimal(quantity)
+
     prices = []
     for offer in result['items'][0]['offers']:
         #Exclude offers without pricing
@@ -184,12 +203,16 @@ for result in results:
                 print('MPN: {} QTY: {} SKU: {} VEND: {} PRICE: {} STOCK: {}'.format(result['items'][0]['mpn'], quantity, offer['sku'], offer['seller']['name'], price, offer['in_stock_quantity'] ))
             prices.append(price)
             index = result['reference']
-            output_row = line_items[index]
+            # Output items from first source
+            output_row = line_items[refFirstSource]
+            # Rewrite the manufacturer part number and manufacturer in case we are dealing with an alternate source
+            output_row['Manufacturer Part Number'] = line_item['Manufacturer Part Number']
+            output_row['Manufacturer'] = line_item['Manufacturer']
             output_row['Vendor'] = offer['seller']['name']
             output_row['Vendor SKU'] = offer['sku']
             output_row['Stock'] = offer['in_stock_quantity']
             output_row['Unit Cost'] = price
-            output_row['Ext Cost'] = price * Decimal(line_items[index]['Qty'])
+            output_row['Ext Cost'] = price * quantity
             row = []
             for item in output_columns:
                 row.append(output_row[item])   # Append column
