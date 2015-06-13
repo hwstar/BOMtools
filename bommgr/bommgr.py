@@ -142,7 +142,7 @@ def lookupPN(pn):
     return res
 
 
-# Lookup manufacturer, return a tuple (MFGId, MFGName) if present else None if not present
+# Lookup manufacturer, return a tuple (MFGName,MFGId) if present else None if not present
 
 def lookupMfgr(mfgr):
     global cur
@@ -341,6 +341,23 @@ def updateTitle(pn, desc):
     conn.commit()
 
 
+# Update manufacturer name in manufacturer's list
+
+def updateMfgrList(mid, newmfgr):
+    global cur
+    pinfo = lookupMfgrByID(mid)
+    if(pinfo is None):
+        print("Error: current manufacturer name not in database")
+        raise(ValueError)
+    mid = pinfo[1]
+    cur.execute('DELETE FROM mlist WHERE MFGId=?',[mid])
+    cur.execute('INSERT INTO mlist (MFGName,MFGId) VALUES (?,?)', [newmfgr, mid])
+     # Save (commit) the changes
+    conn.commit()
+
+
+
+
 # Query by MPN and print results if the MPN exists
 
 def queryMPN(mpn):
@@ -489,10 +506,15 @@ if __name__ == '__main__':
     parser_modify_mfg.add_argument('manufacturer', help='New Manufacturer')
     parser_modify_mfg.add_argument('--forcenewmfg', action='store_true', help="Force add of new manufacturer from name given")
 
+    # Modify manufacturer in manufacturer's list
+    parser_modify_mlistmfg = parser_modify_title_subparser.add_parser('mlistmfg',help='Modify manufacturer name in manufacturer\'s list')
+    parser_modify_mlistmfg.add_argument('curmfg', help='Current Manufacturer')
+    parser_modify_mlistmfg.add_argument('newmfg', help='New Manufacturer')
+
+    ## Parser code end
 
 
-
-    # Customize default configurations to user's home directory
+    ## Customize default configurations to user's home directory
 
     for i in range(0, len(defaultConfigLocations)):
         defaultConfigLocations[i] = os.path.expanduser(defaultConfigLocations[i])
@@ -644,11 +666,14 @@ if __name__ == '__main__':
 
     # Modify a title or an MPN
     if args.operation == 'modify':
-        partnumber = args.partnumber
-        res = lookupPN(partnumber)
-        if(res is None):
-            print('Error: no such part number {}'.format(partnumber))
-            sys.exit(2)
+
+        partnumber = ''
+        if args.modifywhat in ['title', 'mpn', 'mfg']:
+            partnumber = args.partnumber
+            res = lookupPN(partnumber)
+            if(res is None):
+                print('Error: no such part number {}'.format(partnumber))
+                sys.exit(2)
 
         # Modify title
         if args.modifywhat == 'title':
@@ -685,6 +710,24 @@ if __name__ == '__main__':
                     sys.exit(2)
             mid = res[1]
             modifyMFG(partnumber, curmpn, mid)
+
+
+        # Modify menufacturer name in manufacturer's list
+
+        elif args.modifywhat == 'mlistmfg':
+            curmfg = args.curmfg
+            newmfg = args.newmfg
+
+            res = lookupMfgr(curmfg)
+            if(lookupMfgr(curmfg) is None):
+                print('Error: Manufacturer not in database')
+                sys.exit(2)
+            mid = res[1]
+
+            if(lookupMfgr(newmfg) is not None):
+                print('Error: New Manufacturer already in database')
+                sys.exit(2)
+            updateMfgrList(mid, newmfg)
 
         else:
             print('Error: unrecognized modifywhat option')
