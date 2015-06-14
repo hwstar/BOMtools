@@ -72,6 +72,25 @@ The output will look like this when imported into your spreadsheet:
 
 ![ProjectPicture](Screenshot.png)
 
+Command Examples:
+
+`bommgr.py list parts`
+
+Lists all parts in the database
+
+`bommgr.py list parts --like RES%`
+
+List all parts with a Title/Description beginning with RES
+
+`bommgr.py add part --specpn 800123-101 "SCREWDRIVER,LEFT HANDED"`
+
+Add a part with a part number specified in advance
+
+`bommgr.py add part --mfg ACME --mpn ANVIL-01 "ANVIL, 100KG"`
+
+Add a part with a Manufacturer and Manufacturer Part Number
+
+
 *bomcost.py*
 
 The bomcost script takes the csv file from BOMmerge and uses the Octopart
