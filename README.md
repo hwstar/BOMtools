@@ -40,6 +40,8 @@ by calling it from Kicad, or externally on the Eagle .csv file
 
 The output will look like this when imported into your spreadsheet:
 
+![ProjectPicture](Screenshot.png)
+
 *bommgr.py*
 
 Part numbers are expected to be in 6-3 format (e.g. 800000-101). You use
@@ -71,8 +73,6 @@ Other command line options are available to get the next part number to
 be assigned, modify a title, list all the parts or manufacturers, query
 by part number or manufacturer. Examples are shown below.
 
-
-![ProjectPicture](Screenshot.png)
 
 Command Examples:
 
