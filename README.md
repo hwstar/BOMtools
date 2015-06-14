@@ -28,11 +28,11 @@ Before you run the merge script:
 
 1. Assign part numbers with bommgr.py
 
-2a. For Kicad, you'll need to add a PartNumber field for each reference
+2. For Kicad, you'll need to add a PartNumber field for each reference
 designator on your schematic and include the new part number in
 that field.
 
-2b. For Eagle, you'll need to add a PARTNUMBER attribute for each reference
+3. For Eagle, you'll need to add a PARTNUMBER attribute for each reference
 designator on your schematic, bind the part numbers to the PARTNUMBER attribute
 and check include attributes when exporting the .csv vile.
 
