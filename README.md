@@ -24,6 +24,18 @@ or Eagle 6 csv file, and opens the sqlite database to look up other
 relevant fields based on the part number. It then generates an
 output .csv file with all of the relevant fields included.
 
+Before you run the merge script:
+
+1. Assign part numbers with bommgr.py
+
+2a. For Kicad, you'll need to add a PartNumber field for each reference
+designator on your schematic and include the new part number in
+that field.
+
+2b. For Eagle, you'll need to add a PARTNUMBER attribute for each reference
+designator on your schematic, bind the part numbers to the PARTNUMBER attribute
+and check include attributes when exporting the .csv vile.
+
 *bommgr.py*
 
 Part numbers are expected to be in 6-3 format (e.g. 800000-101). You use
@@ -84,8 +96,7 @@ The following python3 modules are required for bommgr.py:
 
 The following python2.7 modules are required for bommerge.py:
 
-kicad_netlist_reader
-
+* kicad_netlist_reader
 * csv
 * sqlite3
 * argparse
