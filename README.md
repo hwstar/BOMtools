@@ -1,8 +1,7 @@
 **BOMtools**
 =========
-This is a set of python scripts for managing and costing parts in a Kicad or Eagle 6 schematic 
-(other schematic capture packages may be supported in the future). A costing script for
-adding costing columns using the Octopart json API is also included.
+This is a set of Python scripts for managing and costing parts in a Kicad or Eagle 6 schematic programs.
+(other schematic capture packages may be supported in the future).
 
 *Introduction*
 
@@ -11,7 +10,7 @@ which can then reference a title/description and optionally single
 or multiple manufacturers and manufacturer's part numbers.
 
 The project consists of a BOM manager script (bommgr.py) written in
-Python 3, a BOM costing script written in python 3,
+Python 3, a BOM costing script written in Python 3,
 and separate merger scripts for
  
  * Kicad xml files written in Python 2.7.
@@ -19,7 +18,7 @@ and separate merger scripts for
 
 *bommerge.py and bommerge-eagle.py* 
 
-The merger script looks for a PartNumber field in the Kicad xml file
+The merger script looks for a part number field in the Kicad xml file
 or Eagle 6 csv file, and opens the sqlite database to look up other
 relevant fields based on the part number. It then generates an
 output .csv file with all of the relevant fields included.
@@ -36,14 +35,21 @@ that field.
 designator on your schematic, bind the part numbers to the PARTNUMBER attribute
 and check include attributes when exporting the .csv file.
 
+Once the above steps are completed, you can run the merge program
+by calling it from Kicad, or externally on the Eagle .csv file
+
+The output will look like this when imported into your spreadsheet:
+
 *bommgr.py*
 
 Part numbers are expected to be in 6-3 format (e.g. 800000-101). You use
 the manager script to add new part numbers like this:
 
-bommgr.py add part "XSTR,NPN,GP,50V"
+`bommgr.py add part "XSTR,NPN,GP,50V"`
 
-This will automatically assign a new part number and spit it out
+You will be prompted for confirmation.
+
+Once confirmed, bommgr.py will automatically assign a new part number and spit it out
 when it has been added to the database.
 
 The only requirement for part number assignment
@@ -58,17 +64,13 @@ You can specify a manufacturer with the --mfg option and a
 manufacturer's part number with the --mpn option. For new parts entered
 without these options, the default values will be used:
 
-"Open Market" for the manufacturer
-"N/A" for the manufacturer's part number
+* "Open Market" for the manufacturer
+* "N/A" for the manufacturer's part number
 
 Other command line options are available to get the next part number to
 be assigned, modify a title, list all the parts or manufacturers, query
-by part number or manufacturer.
+by part number or manufacturer. Examples are shown below.
 
-Once all your parts are in the database, you can run the merge program
-by calling it from Kicad, or externally on the Eagle .csv file
-
-The output will look like this when imported into your spreadsheet:
 
 ![ProjectPicture](Screenshot.png)
 
@@ -139,7 +141,7 @@ The following python3 modules are required for bomcost.py:
 * urllib.parse
 * decimal
 
-When running the parts manager or the kicad merger, the database will
+Before running the parts manager or the merger scripts, the database will
 need to be created. A separate script, gendb.py in the bommgr
 directory does this.
 
