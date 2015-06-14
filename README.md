@@ -34,7 +34,7 @@ that field.
 
 3. For Eagle, you'll need to add a PARTNUMBER attribute for each reference
 designator on your schematic, bind the part numbers to the PARTNUMBER attribute
-and check include attributes when exporting the .csv vile.
+and check include attributes when exporting the .csv file.
 
 *bommgr.py*
 
