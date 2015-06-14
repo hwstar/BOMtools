@@ -285,6 +285,7 @@ for i,item in enumerate(matched_items):
 
     alt_source_index = 1
     while alt_source_index < len(mfginfo):
+        row = []
         row.append(item['Item'])
         row.append('') # Part number
         row.append('') # Qty

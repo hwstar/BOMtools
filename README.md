@@ -1,6 +1,6 @@
 **BOMtools**
 =========
-This is a set of python scripts for managing and costing parts in a kicad schematic 
+This is a set of python scripts for managing and costing parts in a Kicad or Eagle 6 schematic 
 (other schematic capture packages may be supported in the future). A costing script for
 adding costing columns using the Octopart json API is also included.
 
@@ -11,15 +11,18 @@ which can then reference a title/description and optionally single
 or multiple manufacturers and manufacturer's part numbers.
 
 The project consists of a BOM manager script (bommgr.py) written in
-python 3, a BOM costing script written in python 3,
-and a merger script for kicad xml files written in python 2.7.
+Python 3, a BOM costing script written in python 3,
+and separate merger scripts for
+ 
+ * Kicad xml files written in Python 2.7.
+ * Eagle 6 .csv files written in Python 3.0
 
-*bommerge.py*
+*bommerge.py and bommerge-eagle.py* 
 
-The merger script looks for a PartNumber field in the kicad xml file,
-and opens the sqlite database to look up other relevant fields based
-on the part number. It then generates a .csv file with all of the
-relevant fields included.
+The merger script looks for a PartNumber field in the Kicad xml file
+or Eagle 6 csv file, and opens the sqlite database to look up other
+relevant fields based on the part number. It then generates an
+output .csv file with all of the relevant fields included.
 
 *bommgr.py*
 
@@ -51,7 +54,7 @@ be assigned, modify a title, list all the parts or manufacturers, query
 by part number or manufacturer.
 
 Once all your parts are in the database, you can run the merge program
-by calling it from kicad. 
+by calling it from Kicad, or externally on the Eagle .csv file
 
 The output will look like this when imported into your spreadsheet:
 
@@ -75,27 +78,36 @@ output imported into a spreadsheet:
 
 The following python3 modules are required for bommgr.py:
 
-sqlite3
-argparse
-configparser
+* sqlite3
+* argparse
+* configparser
 
 The following python2.7 modules are required for bommerge.py:
 
 kicad_netlist_reader
-csv
-sqlite3
-argparse
-ConfigParser
+
+* csv
+* sqlite3
+* argparse
+* ConfigParser
+
+The following python3 files are required for bommerge-eagle.py
+
+* argparse
+* configparser
+* csv
+* sqlite3
+
 
 The following python3 modules are required for bomcost.py:
 
-argparse
-configparser
-csv
-json
-urllib3
-urllib.parse
-decimal
+* argparse
+* configparser
+* csv
+* json
+* urllib3
+* urllib.parse
+* decimal
 
 When running the parts manager or the kicad merger, the database will
 need to be created. A separate script, gendb.py in the bommgr
