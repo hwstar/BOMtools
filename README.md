@@ -107,6 +107,14 @@ output imported into a spreadsheet:
 ![ProjectPicture](ScreenshotCost.png)
 
 
+*partview.py*
+
+This is an expermental GUI part viewer which displays parts in a list form
+for ease of use during part number population of the schematic.
+In its current form, all it does is list the parts. Adding or modifying
+parts still needs to be done using the command line in a terminal window.
+
+
 *Installation*
 
 The following python3 modules are required for bommgr.py:
@@ -140,6 +148,13 @@ The following python3 modules are required for bomcost.py:
 * urllib3
 * urllib.parse
 * decimal
+
+The following python3 modules are required for partview.py
+
+* sqlite3
+* configparser
+* tkinter import
+* tkinter.ttk
 
 Before running the parts manager or the merger scripts, the database will
 need to be created. A separate script, gendb.py in the bommgr
