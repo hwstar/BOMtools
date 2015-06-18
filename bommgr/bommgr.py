@@ -24,11 +24,13 @@ import os
 import sqlite3
 import argparse
 import configparser
+from bommdb import *
 
 defaultMpn = 'N/A'
 defaultDb= '/etc/bommgr/parts.db'
 defaultConfigLocations = ['/etc/bommgr/bommgr.conf','~/.bommgr/bommgr.conf','bommgr.conf']
 firstPn = '800000-101'
+defaultMID='M0000000'
 
 # Yes/no prompt
 
@@ -64,177 +66,63 @@ def query_yes_no(question, default="yes"):
             sys.stdout.write("Please respond with 'yes' or 'no' "
                              "(or 'y' or 'n').\n")
 
-def openDB(db):
-    # Set up the dabase connection
-    global conn, cur
-
-    # Check to see if we can access the database file and that it is writable
-
-    if(os.path.isfile(db) == False):
-        print('Error: Database file {} doesn\'t exist'.format(db))
-        raise(SystemError)
-    if(os.access(db,os.W_OK) == False):
-        print('Error: Database file {} is not writable'.format(db))
-        raise(SystemError)
-
-    conn = sqlite3.connect(db)
-    cur = conn.cursor()
-
-
 # List part numbers, descriptions, manufacturers, manufacturer part numbers
 
 def listParts(like=None):
-    global cur, conn, defaultMpn, defaultMfgr
+    global defaultMpn, defaultMfgr
+    global DB
 
-    mfgcur = conn.cursor()
-    if like != None:
-        cur.execute('SELECT Partnumber,Description FROM pndesc WHERE Description LIKE ? ORDER BY PartNumber ASC',[like])
-    else:
-        cur.execute('SELECT Partnumber,Description FROM pndesc ORDER BY PartNumber ASC')
-    res = cur.fetchall()
+    res = DB.get_parts(like)
+
     print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format("Part Num","Title/Description","Manufacturer","MPN"))
     for (pn,desc) in res:
-        mfg = defaultMfgr
-        mpn = defaultMpn
         # Try to retrieve manufacturer info
-        mfgcur.execute('SELECT Manufacturer,MPN FROM pnmpn WHERE PartNumber=?',[pn])
-        minfo = mfgcur.fetchall()
+        minfo = DB.lookup_mpn_by_pn(pn)
 
         if minfo == []: # Use defaults if it no MPN and manufacturer
-            minfo =[(defaultMfgr,defaultMpn)]
+            minfo =[{'mname': defaultMfgr, 'mpn': defaultMpn}]
 
         for i,item in enumerate(minfo):
-            mpn = item[1]
-            mfgid = item[0]
-            mfgcur.execute('SELECT MFGName FROM mlist WHERE MFGId=?', [mfgid])
-            mninfo = mfgcur.fetchone()
-            if(mninfo is not None):
-                mfg = mninfo[0]
-            else:
-                mfg = defaultMfgr
             if i > 0:
                 pn = ''
                 desc = ''
-            print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format(pn,desc,mfg,mpn))
+            print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format(pn,desc,minfo[i]['mname'],minfo[i]['mpn']))
 
 
 # List manufacturers
 
 
 def listMfgrs():
-    global conn,cur
+    global DB
     print('{0:<30}'.format("Manufacturer"))
-    cur.execute('SELECT MFGName FROM mlist ORDER BY MFGName ASC')
-    minfo = cur.fetchall()
-    minfo = sorted(minfo)
+    minfo = DB.get_mfgrs()
     if(minfo is not None):
         for mfgr in minfo:
             print('{0:<30}'.format(mfgr[0]))
 
-
-# Lookup part number, return a tuple (PartNumber, Description) if present else None if not present
-
-def lookupPN(pn):
-    global cur
-
-    cur.execute('SELECT PartNumber,Description FROM pndesc WHERE PartNumber = ?', [pn])
-    res = cur.fetchone()
-    return res
-
-
-# Lookup manufacturer, return a tuple (MFGName,MFGId) if present else None if not present
-
-def lookupMfgr(mfgr):
-    global cur
-
-    cur.execute('SELECT MFGName,MFGId FROM mlist WHERE MFGName = ?', [mfgr])
-    res = cur.fetchone()
-    return res
-
-# Lookup manufacturer by ID , return a tuple (MFGId, MFGName) if present else None if not present
-
-def lookupMfgrByID(mid):
-    global cur
-
-    cur.execute('SELECT MFGName,MFGId FROM mlist WHERE MFGId = ?', [mid])
-    res = cur.fetchone()
-    return res
-
-
-# Lookup manufacturer part number return a tuple (PartNumber, Manufacturer, MPN, Manufacturer ID ) if present else None if not present
-
-def lookupMPN(mpn):
-    global cur
-
-    cur.execute('SELECT PartNumber,Manufacturer,MPN FROM pnmpn WHERE MPN = ?', [mpn])
-    res = cur.fetchone()
-    if(res is None):
-        return None
-    pn = res[0]
-    mid = res[1]
-    mpn = res[2]
-
-    # Convert Manufacturer ID to name
-
-    res = lookupMfgrByID(mid)
-    if res is not None:
-        mname = res[0]
-    else:
-        raise(ValueError)
-
-    return (pn, mname, mpn, mid)
-
-
-# Lookup MPN by PN, return an array of dicts containing each MPN found for a specific PN
-# Return [] if no MPN's assigned to the PN
-
-def lookupMPNByPN(pn):
-    global cur
-
-    cur.execute('SELECT PartNumber,Manufacturer,MPN FROM pnmpn WHERE PartNumber = ?', [pn])
-    res = cur.fetchall()
-
-    reslist = []
-    for item in res:
-        reslist.append({'pn' : item[0],'mid' : item[1], 'mpn' : item[2]})
-
-    for i,item in enumerate(reslist):
-        # Convert Manufacturer ID to name
-        res = lookupMfgrByID(reslist[i]['mid'])
-        if res is not None:
-            reslist[i]['mname'] = res[0]
-        else:
-            raise(ValueError)
-
-    return reslist
 
 
 # Add a new manufacturer to the manufacturer's list
 
 
 def addMfgr(new_mfgr):
-    global conn, cur
+    global DB
     # Does it already exist?
-    minfo = lookupMfgr(new_mfgr)
+    minfo = DB.lookup_mfg(new_mfgr)
     if(minfo is not None):
         print('Error: Manufacturer "{}" is already in the manufacturer\'s list'.format(new_mfgr))
         raise(ValueError)
 
 
     # Get the last used ID and generate the next ID to be used
-    cur.execute('SELECT MAX(MFGId) from mlist')
-    minfo = cur.fetchone()
-    if len(minfo) != 0:
-        midnum = int(minfo[0][1:]) + 1
+    mid = DB.last_mid()
+    if mid is not None:
+        mid = int(mid[1:]) + 1
     else:
-        midnum = 0
-    nextid = 'M{num:07d}'.format(num=midnum)
+        mid = 0
+    nextid = 'M{num:07d}'.format(num=mid)
 
-    # Insert the manufacturer
-    cur.execute('INSERT INTO mlist (MFGId,MFGName) VALUES (?,?)', [nextid, new_mfgr])
-
-    # Save (commit) the changes
-    conn.commit()
+    DB.add_mfg_to_mlist(new_mfgr, nextid)
 
     print("Manufacturer {} added".format(new_mfgr))
 
@@ -255,15 +143,14 @@ def validatePN(pn):
 # Return the next available part number
 
 def nextPN():
-    global cur
+    global DB
      # Get the last used part number and generate the next ID to be used
-    cur.execute('SELECT MAX(PartNumber) from pndesc')
-    res = cur.fetchone()
+    res = DB.last_pn()
     # If this is the very first part number added use the default for firstpn
     if res is None or res[0] is None:
         pn = firstPn
     else:
-        pn = res[0]
+        pn = res
         (prefix, suffix) = pn.split('-')
         nextnum = int(prefix) + 1
         pn = '{prefix:06d}-{suffix:03d}'.format(prefix=nextnum, suffix=101)
@@ -272,7 +159,7 @@ def nextPN():
 # Add a new part to the database
 
 def newPart(desc, newpn = None, mfg='', mpn=''):
-    global cur
+    global DB
     pinfo = None
 
     if(len(desc) == 0 or len(desc) > 50):
@@ -283,7 +170,7 @@ def newPart(desc, newpn = None, mfg='', mpn=''):
 
     if(newpn is not None):
         # User defined part number, need to validate it
-        pinfo = lookupPN(newpn)
+        pinfo = DB.lookup_pn(newpn)
         if(pinfo is not None):
             print('Error: Part number {} already exists'.format(newpn))
             raise(ValueError)
@@ -295,18 +182,18 @@ def newPart(desc, newpn = None, mfg='', mpn=''):
     # Avoid duplicate part number assignment if mpn is not N/A
 
     if mpn is not None:
-        minfo = lookupMPN(mpn)
+        minfo = DB.lookup_mpn(mpn)
         if mpn != defaultMpn and minfo is not None and minfo[1] == mfg:
             print("Error: MPN already exists with same manufacturer under part number {}".format(minfo[0]))
             raise(ValueError)
 
     # Check to see if the manufacturer exists
-    minfo = lookupMfgr(mfg)
+    minfo = DB.lookup_mfg(mfg)
     if minfo is None:
         # Manufacturer doesn't exist, create it
         addMfgr(mfg)
         # Get its ID
-        minfo = lookupMfgr(mfg)
+        minfo = DB.lookup_mfg(mfg)
 
     mname = minfo[0]
     mid = minfo[1]
@@ -326,42 +213,11 @@ def newPart(desc, newpn = None, mfg='', mpn=''):
 
 
 
-# Update the title (description) of a part number
-
-def updateTitle(pn, desc):
-    global cur
-    pinfo = lookupPN(pn)
-    if(pinfo is None):
-        print("Error: Part number {} not in database").format(pn)
-        raise(ValueError)
-    pn = pinfo[0]
-    cur.execute("DELETE FROM pndesc WHERE PartNumber=?",[pn])
-    cur.execute('INSERT INTO pndesc (PartNumber,Description) VALUES (?,?)', [pn, desc])
-     # Save (commit) the changes
-    conn.commit()
-
-
-# Update manufacturer name in manufacturer's list
-
-def updateMfgrList(mid, newmfgr):
-    global cur
-    pinfo = lookupMfgrByID(mid)
-    if(pinfo is None):
-        print("Error: current manufacturer name not in database")
-        raise(ValueError)
-    mid = pinfo[1]
-    cur.execute('DELETE FROM mlist WHERE MFGId=?',[mid])
-    cur.execute('INSERT INTO mlist (MFGName,MFGId) VALUES (?,?)', [newmfgr, mid])
-     # Save (commit) the changes
-    conn.commit()
-
-
-
-
 # Query by MPN and print results if the MPN exists
 
 def queryMPN(mpn):
-    res = lookupMPN(mpn)
+    global DB
+    res = DB.lookup_mpn(mpn)
     if(res is None):
         print("MPN does not exist")
         return
@@ -369,7 +225,7 @@ def queryMPN(mpn):
     mname = res[1]
     mpn = res[2]
 
-    res = lookupPN(pn)
+    res = DB.lookup_pn(pn)
     desc = res[1]
 
     print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format("Part Num","Title/Description","Manufacturer","MPN"))
@@ -381,14 +237,16 @@ def queryMPN(mpn):
 
 def queryPN(pn):
     global defaultMpn, defaultMfgr
-    res = lookupPN(pn)
+    global DB
+
+    res = DB.lookup_pn(pn)
     if(res is None):
         print("Part number does not exist")
         return
     pn = res[0]
     desc = res[1]
     print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format("Part Num","Title/Description","Manufacturer","MPN"))
-    res = lookupMPNByPN(pn)
+    res = DB.lookup_mpn_by_pn(pn)
     if(len(res) is not 0):
         for item in res:
             print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format(item['pn'],
@@ -397,42 +255,33 @@ def queryPN(pn):
         print('{0:<20}  {1:<50}  {2:<30}  {3:<20}'.format(pn,
             desc, defaultMfgr, defaultMpn))
 
-# Modify title
-
-def modifyTitle(partnumber, newtitle):
-    global cur,conn
-
-    cur.execute('DELETE FROM pndesc WHERE PartNumber=?', [partnumber])
-    cur.execute('INSERT INTO pndesc (PartNumber,Description) VALUES (?,?)',[partnumber, newtitle])
-    conn.commit()
-
 # Modify mpn
 
 def modifyMPN(partnumber, curmpn, newmpn):
-    global cur,conn
-    res = lookupMPN(curmpn)
+    global DB
+    res = DB.lookup_mpn(curmpn)
     if res is None:
         print('Error: Can\'t get current MPN record')
         raise SystemError
-    cur.execute('DELETE FROM pnmpn WHERE PartNumber=? AND MPN=? ', [partnumber, curmpn])
-    cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)',[partnumber, res[3], newmpn])
-    conn.commit()
+    mid = res[3]
+    DB.update_mpn(partnumber, curmpn, newmpn, mid)
+
 
 # Modify manufacturer name for a given part number and MPN
 
 def modifyMFG(partnumber, curmpn, newmfgid):
-    global cur,conn
-    res = lookupMPN(curmpn)
+    global DB
+    res = DB.lookup_mpn(curmpn)
     if res is None:
         print('Error: Unknown MPN {}'.format(curmpn))
         raise SystemError
-    res = lookupMfgrByID(newmfgid)
+    res = DB.lookup_mfg_by_id(newmfgid)
     if res is None:
         print('Error: Unknown manufacturer ID {}'.format(newmfgid))
         raise SystemError
-    cur.execute('DELETE FROM pnmpn WHERE PartNumber=? AND MPN=? ', [partnumber, curmpn])
-    cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)',[partnumber, newmfgid, curmpn])
-    conn.commit()
+
+    DB.update_mid(partnumber, curmpn, newmfgid)
+
 
 if __name__ == '__main__':
     conn = None
@@ -551,7 +400,18 @@ if __name__ == '__main__':
         else:
             db = defaultDb
 
-    openDB(db)
+
+    # Check to see if we can access the database file and that it is writable
+
+    if(os.path.isfile(db) == False):
+        print('Error: Database file {} doesn\'t exist'.format(db))
+        raise(SystemError)
+    if(os.access(db,os.W_OK) == False):
+        print('Error: Database file {} is not writable'.format(db))
+        raise(SystemError)
+
+    DB = BOMdb(db)
+
 
     print()
     print("Info: Database used: {}".format(os.path.abspath(db)))
@@ -559,7 +419,7 @@ if __name__ == '__main__':
 
     # Look up default manufacturer
 
-    res = lookupMfgrByID('M0000000')
+    res = DB.lookup_mfg_by_id(defaultMID)
     if(res is None):
         defaultMfgr = 'Default MFG Error'
     else:
@@ -627,17 +487,17 @@ if __name__ == '__main__':
             pn = args.part
             mpn = args.mpn
             mname = args.manufacturer
-            res = lookupPN(pn)
+            res = DB.lookup_pn(pn)
             # Sanity checks
             if res is None :
                 print('Error: no such part number {}'.format(pn))
                 sys.exit(2)
             desc = res[1]
-            res = lookupMPN(mpn)
+            res = DB.lookup_mpn(mpn)
             if res is not None:
                 print('Error: MPN {} is already in the database'.format(mpn))
                 sys.exit(2)
-            minfo = lookupMfgr(mname)
+            minfo = DB.lookup_mfg(mname)
             if args.forcenewmfg is False and minfo is None:
                 print('Error: Manufacturer {} is not in the database. Add with --forcenewmfg'.format(mname))
                 sys.exit(2)
@@ -653,11 +513,9 @@ if __name__ == '__main__':
                     sys.exit(0)
             if(minfo is None): # Add new manufacturer if it doesn't exist
                 addMfgr(mname)
-                minfo=lookupMfgr(mname)
+                minfo = DB.lookup_mfg(mname)
             mid = minfo[1]
-             # Insert part number, manufacturer id, and manufactuer part number
-            cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)', [pn, mid, mpn])
-            conn.commit()
+            DB.add_mpn(pn, mid, mpn)
             print("Alternate MPN added")
 
         else:
@@ -670,20 +528,20 @@ if __name__ == '__main__':
         partnumber = ''
         if args.modifywhat in ['title', 'mpn', 'mfg']:
             partnumber = args.partnumber
-            res = lookupPN(partnumber)
+            res = DB.lookup_pn(partnumber)
             if(res is None):
                 print('Error: no such part number {}'.format(partnumber))
                 sys.exit(2)
 
         # Modify title
         if args.modifywhat == 'title':
-            modifyTitle(partnumber, args.title)
+            DB.update_title(partnumber, args.title)
 
         # Modify mpn
         elif args.modifywhat == 'mpn' :
             curmpn = args.curmpn
             newmpn = args.newmpn
-            res = lookupMPN(curmpn)
+            res = DB.lookup_mpn(curmpn)
             if(res is None):
                 print('Error: no such manufacturer part number {}'.format(curmpn))
                 sys.exit(2)
@@ -693,18 +551,18 @@ if __name__ == '__main__':
         elif args.modifywhat == 'mfg':
             curmpn = args.curmpn
             mfgr = args.manufacturer
-            res = lookupMPN(curmpn)
+            res = DB.lookup_mpn(curmpn)
             if(res is None):
                 print('Error: no such manufacturer part number {}'.format(curmpn))
                 sys.exit(2)
             # See if mfgr already exists
-            res = lookupMfgr(mfgr)
+            res = DB.lookup_mfg(mfgr)
             if res is None:
                 if args.forcenewmfg:
                     # Create new manufacturer
                     addMfgr(mfgr)
                     # Get the newly assigned mid
-                    res = lookupMfgr(mfgr)
+                    res = DB.lookup_mfg(mfgr)
                 else:
                     print('Error: Manufacturer {} not in database. Add with --forcenewmfg'.format(mfgr))
                     sys.exit(2)
@@ -718,16 +576,16 @@ if __name__ == '__main__':
             curmfg = args.curmfg
             newmfg = args.newmfg
 
-            res = lookupMfgr(curmfg)
-            if(lookupMfgr(curmfg) is None):
+            res = DB.lookup_mfg(curmfg)
+            if(res is None):
                 print('Error: Manufacturer not in database')
                 sys.exit(2)
             mid = res[1]
 
-            if(lookupMfgr(newmfg) is not None):
+            if(DB.lookup_mfg(newmfg) is not None):
                 print('Error: New Manufacturer already in database')
                 sys.exit(2)
-            updateMfgrList(mid, newmfg)
+            DB.update_mfg(mid, newmfg)
 
         else:
             print('Error: unrecognized modifywhat option')
