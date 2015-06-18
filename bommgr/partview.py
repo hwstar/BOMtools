@@ -22,6 +22,7 @@ __author__ = 'srodgers'
 import configparser
 from tkinter import *
 from tkinter.ttk import *
+import pyperclip
 from bommdb import *
 
 defaultMpn = 'N/A'
@@ -162,66 +163,105 @@ class Dialog(Toplevel):
 
         pass # override
 
+#
+# Class to show part list
+#
+
+class ShowParts:
+    def __init__(self, parent, db):
+        self.parent = parent
+        self.frame = None
+        self.db = db
+        # create a popup menu
+        self.popupmenu = Menu(self.parent, tearoff=0)
+        self.popupmenu.add_command(label="Copy part number to Clipboard", command=self.copy_pn)
 
 
-# List part numbers, descriptions, manufacturers, manufacturer part numbers in a TreeView class with
-# Vertical and horizontal scrollbars
+    def refresh(self, like=None):
+        """
+        Refresh screen with current list entries
+        :return: N/A
+        """
+        if(self.frame is not None):
+            self.frame.destroy()
+        self.frame = Frame(self.parent)
+        self.frame.pack(side=TOP, fill=BOTH, expand=Y)
+        self.ltree = Treeview(height="26", columns=("Part Number","Description","Manufacturer","Manufacturer Part Number"), selectmode="extended")
+        ysb = Scrollbar(orient='vertical', command=self.ltree.yview)
+        xsb = Scrollbar(orient='horizontal', command=self.ltree.xview)
+        self.ltree.configure(xscroll=xsb.set, yscroll=ysb.set)
+        self.ltree.heading('#1', text='Part Number', anchor=W)
+        self.ltree.heading('#2', text='Description', anchor=W)
+        self.ltree.heading('#3', text='Manufacturer', anchor=W)
+        self.ltree.heading('#4', text='Manufacturer Part Number', anchor=W)
+        self.ltree.column('#1', stretch=NO, minwidth=0, width=200)
+        self.ltree.column('#2', stretch=NO, minwidth=0, width=500)
+        self.ltree.column('#3', stretch=NO, minwidth=0, width=300)
+        self.ltree.column('#4', stretch=YES, minwidth=0, width=300)
+        self.ltree.column('#0', stretch=NO, minwidth=0, width=0) #width 0 for special heading
+        self.ltree.bind("<Button-3>", self.popup)
+
+        parts = self.db.get_parts(like)
 
 
-def listParts(like=None):
-    global DB, defaultMpn, defaultMfgr, listFrame
+        for row,(pn,desc) in enumerate(parts):
+            mfg = defaultMfgr
+            mpn = defaultMpn
 
-    if listFrame is not None:
-        listFrame.destroy()
-        listFrame = None
+            # Try to retrieve manufacturer info
+            minfo = self.db.lookup_mpn_by_pn(pn)
 
-    listFrame=Frame(root)
-    listFrame.pack(side=TOP, fill=BOTH, expand=Y)
+            if minfo == []: # Use defaults if it no MPN and manufacturer
+                minfo =[{'mname':defaultMfgr,'mpn':defaultMpn}]
 
+            for i,item in enumerate(minfo):
+                mfg = item['mname']
+                mpn = item['mpn']
+                if i > 0:
+                    pn = ''
+                    desc = ''
+                self.ltree.insert("", "end", "", values=((pn, desc, mfg, mpn)), tags=(row))
 
-    ltree = Treeview(height="26", columns=("Part Number","Description","Manufacturer","Manufacturer Part Number"), selectmode="extended")
-    ysb = Scrollbar(orient='vertical', command=ltree.yview)
-    xsb = Scrollbar(orient='horizontal', command=ltree.xview)
-    ltree.configure(xscroll=xsb.set, yscroll=ysb.set)
-    ltree.heading('#1', text='Part Number', anchor=W)
-    ltree.heading('#2', text='Description', anchor=W)
-    ltree.heading('#3', text='Manufacturer', anchor=W)
-    ltree.heading('#4', text='Manufacturer Part Number', anchor=W)
-    ltree.column('#1', stretch=NO, minwidth=0, width=200)
-    ltree.column('#2', stretch=NO, minwidth=0, width=500)
-    ltree.column('#3', stretch=NO, minwidth=0, width=300)
-    ltree.column('#4', stretch=YES, minwidth=0, width=300)
-    ltree.column('#0', stretch=NO, minwidth=0, width=0) #width 0 for special heading
-
-
-    parts = DB.get_parts(like)
+        # add tree and scrollbars to frame
+        self.ltree.grid(in_=self.frame, row=0, column=0, sticky=NSEW)
+        ysb.grid(in_=self.frame, row=0, column=1, sticky=NS)
+        xsb.grid(in_=self.frame, row=1, column=0, sticky=EW)
+        # set frame resizing priorities
+        self.frame.rowconfigure(0, weight=1)
+        self.frame.columnconfigure(0, weight=1)
 
 
-    for row,(pn,desc) in enumerate(parts):
-        mfg = defaultMfgr
-        mpn = defaultMpn
+    def popup(self, event):
+        """
+        Act on right click
+        :param event:
+        :return: N/A
+        """
 
-        # Try to retrieve manufacturer info
-        minfo = DB.lookup_mpn_by_pn(pn)
+        # select row under mouse
+        iid = self.ltree.identify_row(event.y)
+        if iid:
+            # mouse pointer over item
+            self.ltree.selection_set(iid)
+            item = self.ltree.item(iid)
+            # Remember part number
+            self.selectedpn = item['values'][0]
+            self.popupmenu.post(event.x_root, event.y_root)
 
-        if minfo == []: # Use defaults if it no MPN and manufacturer
-            minfo =[{'mname':defaultMfgr,'mpn':defaultMpn}]
+        else:
+            # mouse pointer not over item
+            # occurs when items do not fill frame
+            # no action required
+            pass
 
-        for i,item in enumerate(minfo):
-            mfg = item['mname']
-            mpn = item['mpn']
-            if i > 0:
-                pn = ''
-                desc = ''
-            ltree.insert("", "end", "", values=((pn, desc, mfg, mpn)), tags=(row))
+    def copy_pn(self):
+        """
+        Copy part number to clipboard to reduce chance of typos
+        :return: N/A
+        """
+        pyperclip.copy(self.selectedpn)
 
-    # add tree and scrollbars to frame
-    ltree.grid(in_=listFrame, row=0, column=0, sticky=NSEW)
-    ysb.grid(in_=listFrame, row=0, column=1, sticky=NS)
-    xsb.grid(in_=listFrame, row=1, column=0, sticky=EW)
-    # set frame resizing priorities
-    listFrame.rowconfigure(0, weight=1)
-    listFrame.columnconfigure(0, weight=1)
+
 
 #
 #
@@ -235,8 +275,7 @@ def listParts(like=None):
 #
 
 if __name__ == '__main__':
-    conn = None
-    cur = None
+
 
    ## Customize default configurations to user's home directory
 
@@ -285,6 +324,9 @@ if __name__ == '__main__':
 
     root = Tk()
     app=FullScreenApp(root)
+
+    parts = ShowParts(root, DB)
+
     menubar = Menu(root, tearoff = 0)
     filemenu = Menu(menubar, tearoff=0)
     filemenu.add_command(label="Exit", command=root.quit)
@@ -293,11 +335,13 @@ if __name__ == '__main__':
     root.config(menu=menubar)
 
     viewmenu = Menu(menubar, tearoff = 0)
-    viewmenu.add_command(label="List Parts", command=listParts)
+    viewmenu.add_command(label="Refresh", command=parts.refresh)
     menubar.add_cascade(label="View", menu=viewmenu)
 
 
     # display the menu
     root.config(menu=menubar)
+
+    parts.refresh()
 
     root.mainloop()
