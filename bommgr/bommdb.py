@@ -118,7 +118,8 @@ class BOMdb:
 
         :param pn: The part number to be queried
         :return: Returns a list of dictionaries containing the manufacturer information for the part number
-        Dictionary contents: {pn: Part Number, mid: Manufacturer ID, mpn: Manufacturer Part Number}
+        Dictionary contents: {pn: Part Number, mid: Manufacturer ID, mpn: Manufacturer Part Number
+        mname: Manufacturer Name}
         """
 
         self.cur.execute('SELECT PartNumber,Manufacturer,MPN FROM pnmpn WHERE PartNumber = ?', [pn])

@@ -114,14 +114,35 @@ for ease of use during part number population of the schematic.
 In its current form, all it does is list the parts. Adding or modifying
 parts still needs to be done using the command line in a terminal window.
 
+*Configuration File*
+
+A configuration file is used to configure the behaviour of the scripts. Please refer to the the sample bommgr.conf
+file in the bommgr directory for details.
+
+*Configuration File Directory Search Order*
+
+These scripts search for the configuration file "bommgr.conf" in the following order:
+
+* Current working directory
+* ~/.bommgr
+* /etc/bommgr
+
+*Database Generator*
+
+Before running the parts manager or the merger scripts, the database will
+need to be created. A separate script, "gendb.py" in the bommgr
+directory does this. This script is not installed, and needs to be run manually in the directory where the database is going to be kept,
+and the configuration file bommgr.conf needs to point to the location of the database file.
+
 
 *Installation*
 
-The following python3 modules are required for bommgr.py:
+The standard python way of installation "setup.py" installs bommgr.py, bomcost.py, and partview.py. I typically install into my home directory
+with the following command:
 
-* sqlite3
-* argparse
-* configparser
+`python3 setup.py install --home ~`
+
+The merger scripts do not have an installer associated with them.
 
 The following python2.7 modules are required for bommerge.py:
 
@@ -138,27 +159,6 @@ The following python3 files are required for bommerge-eagle.py
 * csv
 * sqlite3
 
-
-The following python3 modules are required for bomcost.py:
-
-* argparse
-* configparser
-* csv
-* json
-* urllib3
-* urllib.parse
-* decimal
-
-The following python3 modules are required for partview.py
-
-* sqlite3
-* configparser
-* tkinter import
-* tkinter.ttk
-
-Before running the parts manager or the merger scripts, the database will
-need to be created. A separate script, gendb.py in the bommgr
-directory does this.
 
 *Notice*
 
