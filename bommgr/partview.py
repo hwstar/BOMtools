@@ -163,6 +163,76 @@ class Dialog(Toplevel):
 
         pass # override
 
+
+#
+# Edit Description dialog box
+#
+
+class EditDescription(Dialog):
+    def __init__(self, parent, title = None, xoffset=50, yoffset=50, pn=None, db=None):
+        if db is None or pn is None or title is None:
+            raise SystemError
+        self.db = db
+        self.pn = pn
+        Dialog.__init__(self, parent, title, xoffset, yoffset)
+
+    def body(self, master):
+        Label(master, text='Description').grid(row=0, column=0, sticky=W)
+        self.title_entry = Entry(master, width=50)
+        partinfo = self.db.lookup_pn(self.pn)
+        if partinfo is None:
+            raise SystemError
+        self.title_entry.insert(0, partinfo[1])
+        self.title_entry.grid(row=0, column=1, sticky=W)
+        pass
+
+    def validate(self):
+        title_entry_text = self.title_entry.get()
+        if len(title_entry_text) < 5 or len(title_entry_text) > 50:
+            return False
+        return True
+
+    def apply(self):
+        title_entry_text = self.title_entry.get()
+        self.db.update_title(self.pn, title_entry_text)
+
+
+#
+# Edit Manufacturer's part number dialog box
+#
+
+class EditMPN(Dialog):
+    def __init__(self, parent, title = None, xoffset=50, yoffset=50, mpn=None, db=None):
+        if db is None or mpn is None or title is None:
+            raise SystemError
+        self.db = db
+        self.mpn = mpn
+        Dialog.__init__(self, parent, title, xoffset, yoffset)
+
+    def body(self, master):
+        Label(master, text='Manufacturer Part Number').grid(row=0, column=0, sticky=W)
+        self.mpn_entry = Entry(master, width=30)
+        partinfo = self.db.lookup_mpn(self.mpn)
+        if partinfo is None:
+            raise SystemError
+        self.mpn_entry.insert(0, partinfo[2])
+        self.mpn_entry.grid(row=0, column=1, sticky=W)
+        pass
+
+    def validate(self):
+        title_entry_text = self.mpn_entry.get()
+        if len(title_entry_text) < 5 or len(title_entry_text) > 30:
+            return False
+        return True
+
+    def apply(self):
+        (pn, mname, mpn, mid) = self.db.lookup_mpn(self.mpn)
+        newmpn = self.mpn_entry.get()
+        self.db.update_mpn(pn, mpn,
+                           newmpn, mid)
+
+
+
 #
 # Class to show part list
 #
@@ -175,8 +245,10 @@ class ShowParts:
         # create a popup menu
         self.pnpopupmenu = Menu(self.parent, tearoff=0)
         self.pnpopupmenu.add_command(label="Copy part number to clipboard", command=self.copy_pn)
+        self.pnpopupmenu.add_command(label="Edit Description",command=self.edit_description)
         self.mpnpopupmenu = Menu(self.parent, tearoff=0)
         self.mpnpopupmenu.add_command(label="Copy manufacturer part number to clipboard", command=self.copy_pn)
+        self.mpnpopupmenu.add_command(label="Edit Manufacturer Part Number", command=self.edit_mpn)
 
 
 
@@ -272,7 +344,23 @@ class ShowParts:
         pyperclip.copy(self.selectedpn)
 
 
+    def edit_description(self):
+        """
+        Display Dialog box and allow user to edit part description
+        :return: N/A
+        """
+        title = 'Edit Description: ' + self.selectedpn
+        e = EditDescription(self.parent, pn=self.selectedpn, db=self.db, title=title)
+        self.refresh()
 
+    def edit_mpn(self):
+        """
+        Display Dialog box and allow user to edit the manufacturer part number
+        :return: N/A
+        """
+        title = 'Edit Manufacturer Part Number: ' + self.selectedpn
+        e = EditMPN(self.parent, mpn=self.selectedpn, db=self.db, title=title)
+        self.refresh()
 #
 #
 #
