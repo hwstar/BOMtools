@@ -10,9 +10,9 @@ which can then reference a title/description and optionally single
 or multiple manufacturers and manufacturer's part numbers.
 
 The project consists of a BOM manager CLI script (bommgr.py) and
-a Part Manager GUI (tkinter/ttk) script both of which are written in
+a Part Manager GUI (partmgr.py) script both of which are written in
 Python 3, a BOM costing script written in Python 3,
-and separate merger scripts for
+and separate merger scripts for:
  
  * Kicad xml files written in Python 2.7.
  * Eagle 6 .csv files written in Python 3.0
@@ -116,6 +116,16 @@ numbers and manufacturer part numbers to be pasted to the clipboard. It also all
 new parts to be added, descriptions to be changed, and manufacturer part
 numbers to be changed. There is still quite a bit of functionality missing
 which will require the use of the command line tool in some cases.
+
+* Part numbers and descriptions are presented in list form.
+
+* To see the manufacturers and manufacturer part numbers for a given part number, double click on the row.
+
+* To edit a description, right click on a row.
+
+* To edit a manufacturer part number, right click on an opened manufacturer row.
+
+* New part numbers may be added using the Edit menu.
 
 
 *Configuration File*
