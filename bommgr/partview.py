@@ -214,12 +214,10 @@ class ShowParts:
             if minfo == []: # Use defaults if it no MPN and manufacturer
                 minfo =[{'mname':defaultMfgr,'mpn':defaultMpn}]
 
+
             for i,item in enumerate(minfo):
                 mfg = item['mname']
                 mpn = item['mpn']
-                if i > 0:
-                    pn = ''
-                    desc = ''
                 self.ltree.insert("", "end", "", values=((pn, desc, mfg, mpn)), tags=(row))
 
         # add tree and scrollbars to frame
@@ -246,7 +244,7 @@ class ShowParts:
             item = self.ltree.item(iid)
             # Remember part number
             self.selectedpn = item['values'][0]
-            self.popupmenu.post(event.x_root, event.y_root)
+            self.popupmenu.tk_popup(event.x_root, event.y_root)
 
         else:
             # mouse pointer not over item
