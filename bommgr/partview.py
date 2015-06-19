@@ -173,8 +173,11 @@ class ShowParts:
         self.frame = None
         self.db = db
         # create a popup menu
-        self.popupmenu = Menu(self.parent, tearoff=0)
-        self.popupmenu.add_command(label="Copy part number to Clipboard", command=self.copy_pn)
+        self.pnpopupmenu = Menu(self.parent, tearoff=0)
+        self.pnpopupmenu.add_command(label="Copy part number to clipboard", command=self.copy_pn)
+        self.mpnpopupmenu = Menu(self.parent, tearoff=0)
+        self.mpnpopupmenu.add_command(label="Copy manufacturer part number to clipboard", command=self.copy_pn)
+
 
 
     def refresh(self, like=None):
@@ -204,9 +207,12 @@ class ShowParts:
         parts = self.db.get_parts(like)
 
 
+
+
         for row,(pn,desc) in enumerate(parts):
             mfg = defaultMfgr
             mpn = defaultMpn
+            parent_iid = self.ltree.insert("", "end", "", tag=[pn,'partrec'], values=((pn, desc, '', '')))
 
             # Try to retrieve manufacturer info
             minfo = self.db.lookup_mpn_by_pn(pn)
@@ -218,7 +224,9 @@ class ShowParts:
             for i,item in enumerate(minfo):
                 mfg = item['mname']
                 mpn = item['mpn']
-                self.ltree.insert("", "end", "", values=((pn, desc, mfg, mpn)), tags=(row))
+                #self.ltree.insert("", "end", "", values=((pn, desc, mfg, mpn)), tags=(row))
+                self.ltree.insert(parent_iid, "end", "", tag=[pn,'mfgpartrec'], values=(('', '', mfg, mpn)))
+
 
         # add tree and scrollbars to frame
         self.ltree.grid(in_=self.frame, row=0, column=0, sticky=NSEW)
@@ -242,9 +250,13 @@ class ShowParts:
             # mouse pointer over item
             self.ltree.selection_set(iid)
             item = self.ltree.item(iid)
-            # Remember part number
-            self.selectedpn = item['values'][0]
-            self.popupmenu.tk_popup(event.x_root, event.y_root)
+            if item['tags'][1] == 'partrec':
+                # Remember part number
+                self.selectedpn = item['values'][0]
+                self.pnpopupmenu.tk_popup(event.x_root, event.y_root)
+            elif item['tags'][1] == 'mfgpartrec':
+                self.selectedpn = item['values'][3]
+                self.mpnpopupmenu.tk_popup(event.x_root, event.y_root)
 
         else:
             # mouse pointer not over item
