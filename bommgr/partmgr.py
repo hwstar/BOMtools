@@ -25,6 +25,7 @@ from tkinter.ttk import *
 import pyperclip
 from bommdb import *
 
+
 defaultMpn = 'N/A'
 defaultDb= '/etc/bommgr/parts.db'
 defaultConfigLocations = ['/etc/bommgr/bommgr.conf','~/.bommgr/bommgr.conf','bommgr.conf']
@@ -184,7 +185,6 @@ class EditDescription(Dialog):
             raise SystemError
         self.title_entry.insert(0, partinfo[1])
         self.title_entry.grid(row=0, column=1, sticky=W)
-        pass
 
     def validate(self):
         title_entry_text = self.title_entry.get()
@@ -218,11 +218,11 @@ class EditMPN(Dialog):
             raise SystemError
         self.mpn_entry.insert(0, partinfo[2])
         self.mpn_entry.grid(row=0, column=1, sticky=W)
-        pass
+
 
     def validate(self):
         title_entry_text = self.mpn_entry.get()
-        if len(title_entry_text) < 5 or len(title_entry_text) > 30:
+        if len(title_entry_text) < 3 or len(title_entry_text) > 30:
             return False
         return True
 
@@ -233,6 +233,146 @@ class EditMPN(Dialog):
                            newmpn, mid)
         self.values[3] = newmpn
 
+
+
+class AddMfgrDialog(Dialog):
+    def __init__(self, parent, title="Add Manufacturer", xoffset=50, yoffset=50, new_mfg=None):
+        if new_mfg is None:
+            raise SystemError
+        self.confirm = False
+        self.new_mfg = new_mfg
+        self.titlestr = title
+        Dialog.__init__(self, parent, title, xoffset, yoffset)
+
+    def body(self, master):
+        label_text = self.titlestr+': '+self.new_mfg+'?'
+        Label(master, text=label_text).pack()
+
+
+    def apply(self):
+        self.confirm = True
+
+    def confirmed(self):
+        return self.confirm
+
+#
+# Add part dialog box
+#
+
+class AddPartDialog(Dialog):
+    """
+    Add part dialog box
+    """
+    def __init__(self, parent, title = "Add Part", xoffset=50, yoffset=50, db=None):
+        """
+
+        :param parent: Parent window
+        :param title: Title of add part dialog box
+        :param xoffset: Offset in X direction
+        :param yoffset: Offset in Y direction
+        :param db: Database object
+        :return: N/A
+        """
+        if db is None or title is None:
+            raise SystemError
+        self.db = db
+        Dialog.__init__(self, parent, title, xoffset, yoffset)
+
+    def new_pn(self):
+        """
+        Return the next available part number from the database
+        :return: Part number string
+        """
+        res = self.db.last_pn()
+        # If this is the very first part number added use the default for firstpn
+        if res is None or res[0] is None:
+            pn = firstPn
+        else:
+            pn = res
+        (prefix, suffix) = pn.split('-')
+        nextnum = int(prefix) + 1
+        pn = '{prefix:06d}-{suffix:03d}'.format(prefix=nextnum, suffix=101)
+        return pn
+
+    def body(self, master):
+        nextpn = self.new_pn()
+        self.mfgrs = self.db.get_mfgr_list()
+        def_sel = self.mfgrs.index(defaultMfgr)
+
+        Label(master, text='Part Number').grid(row=0, column=0, sticky=W)
+        self.pn_entry = Entry(master, width=10)
+        self.pn_entry.insert(0, nextpn)
+        self.pn_entry.grid(row=0, column=1, sticky=W)
+
+        Label(master, text='Description').grid(row=1, column=0, sticky=W)
+        self.desc_entry = Entry(master, width=50)
+        self.desc_entry.grid(row=1, column=1, sticky=W)
+
+        Label(master, text='Manufacturer').grid(row=2, column=0, sticky=W)
+        self.mfgr_entry = Combobox(master, width=30, values=self.mfgrs)
+        self.mfgr_entry.current(def_sel)
+        self.mfgr_entry.grid(row=2, column=1, sticky=W)
+
+        Label(master, text='Manufacturer Part Number').grid(row=3, column=0, sticky=W)
+        self.mpn_entry = Entry(master, width=30)
+        self.mpn_entry.insert(0, defaultMpn)
+        self.mpn_entry.grid(row=3, column=1, sticky=W)
+
+
+    def validate(self):
+
+        # Validate part number
+        x = len(self.pn_entry.get())
+        if x != 10:
+            return False
+
+        # Validate description
+        x = len(self.desc_entry.get())
+        if x < 5 or x > 50:
+            return False
+
+        # Validate manufacturer part number
+        x = len(self.mpn_entry.get())
+        if x < 3 or x > 30:
+            return False
+
+        # Validate manufacturer, and add a new manufacturer if need be
+        selected = self.mfgr_entry.get()
+        if selected not in self.mfgrs:
+            confirm_mfg = AddMfgrDialog(self.parent, new_mfg=selected)
+            if confirm_mfg.confirmed() is False:
+                return False
+            else:
+                # Assign a new mid
+                mid = self.db.last_mid()
+                if mid is not None:
+                    mid = int(mid[1:]) + 1
+                else:
+                    mid = 0
+                nextmid = 'M{num:07d}'.format(num=mid)
+                # Add manufacturer and MID to manufacturer list
+                self.db.add_mfg_to_mlist(selected, nextmid)
+                self.mfgrs.append(selected)
+
+
+
+        return True
+
+    def apply(self):
+        # Retreive all fields
+        pn = self.pn_entry.get()
+        desc = self.desc_entry.get()
+        mfgr = self.mfgr_entry.get()
+        mpn = self.mpn_entry.get()
+
+        # Get the mid for the manufacturer name
+        res = self.db.lookup_mfg(mfgr)
+        if res is None:
+            raise SystemError
+        mid = res[1]
+
+        # Create the part record and manufacturer part record
+        self.db.add_pn(pn, desc, mid, mpn)
 
 
 
@@ -377,7 +517,9 @@ class ShowParts:
 #
 
 def addPN():
-    pass
+    AddPartDialog(root, db=DB)
+    parts.refresh()
+
 #
 #
 #
@@ -438,6 +580,7 @@ if __name__ == '__main__':
     # Set up the TCL add window
 
     root = Tk()
+    root.title("Part Manager")
     app=FullScreenApp(root)
 
     parts = ShowParts(root, DB)

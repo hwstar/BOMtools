@@ -51,13 +51,28 @@ class BOMdb:
         """
         Returns a sorted list of manufacturers
         :param like: Database matching string. Use % as a wild card
-        :return: List of manufacturers
+        :return: List of manufacturer tuples
         """
         if like != None:
             self.cur.execute('SELECT MFGName FROM mlist WHERE MFGName LIKE ? ORDER BY MFGName ASC')
         else:
             self.cur.execute('SELECT MFGName FROM mlist ORDER BY MFGName ASC')
         return self.cur.fetchall()
+
+
+
+    def get_mfgr_list(self, like=None):
+        """
+        A better form of get_mfgrs()
+        :param like:
+        :return: List of manufacturers
+        """
+        res = self.get_mfgrs(like)
+        mfgrs = []
+        for item in res:
+            mfgrs.append(item[0])
+        return mfgrs
+
 
     def lookup_pn(self, pn):
         """
