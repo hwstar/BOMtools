@@ -169,17 +169,17 @@ class Dialog(Toplevel):
 #
 
 class EditDescription(Dialog):
-    def __init__(self, parent, title = None, xoffset=50, yoffset=50, pn=None, db=None):
-        if db is None or pn is None or title is None:
+    def __init__(self, parent, title = None, xoffset=50, yoffset=50, values=None, db=None):
+        if db is None or values is None or title is None:
             raise SystemError
         self.db = db
-        self.pn = pn
+        self.values = values
         Dialog.__init__(self, parent, title, xoffset, yoffset)
 
     def body(self, master):
         Label(master, text='Description').grid(row=0, column=0, sticky=W)
         self.title_entry = Entry(master, width=50)
-        partinfo = self.db.lookup_pn(self.pn)
+        partinfo = self.db.lookup_pn(self.values[0])
         if partinfo is None:
             raise SystemError
         self.title_entry.insert(0, partinfo[1])
@@ -194,7 +194,8 @@ class EditDescription(Dialog):
 
     def apply(self):
         title_entry_text = self.title_entry.get()
-        self.db.update_title(self.pn, title_entry_text)
+        self.db.update_title(self.values[0], title_entry_text)
+        self.values[1] = title_entry_text
 
 
 #
@@ -202,17 +203,17 @@ class EditDescription(Dialog):
 #
 
 class EditMPN(Dialog):
-    def __init__(self, parent, title = None, xoffset=50, yoffset=50, mpn=None, db=None):
-        if db is None or mpn is None or title is None:
+    def __init__(self, parent, title = None, xoffset=50, yoffset=50, values=None, db=None):
+        if db is None or values is None or title is None:
             raise SystemError
         self.db = db
-        self.mpn = mpn
+        self.values = values
         Dialog.__init__(self, parent, title, xoffset, yoffset)
 
     def body(self, master):
         Label(master, text='Manufacturer Part Number').grid(row=0, column=0, sticky=W)
         self.mpn_entry = Entry(master, width=30)
-        partinfo = self.db.lookup_mpn(self.mpn)
+        partinfo = self.db.lookup_mpn(self.values[3])
         if partinfo is None:
             raise SystemError
         self.mpn_entry.insert(0, partinfo[2])
@@ -226,10 +227,12 @@ class EditMPN(Dialog):
         return True
 
     def apply(self):
-        (pn, mname, mpn, mid) = self.db.lookup_mpn(self.mpn)
+        (pn, mname, mpn, mid) = self.db.lookup_mpn(self.values[3])
         newmpn = self.mpn_entry.get()
         self.db.update_mpn(pn, mpn,
                            newmpn, mid)
+        self.values[3] = newmpn
+
 
 
 
@@ -318,16 +321,16 @@ class ShowParts:
 
         # select row under mouse
         iid = self.ltree.identify_row(event.y)
+        self.itemid = iid
         if iid:
             # mouse pointer over item
             self.ltree.selection_set(iid)
             item = self.ltree.item(iid)
+            self.itemvalues = item['values']
             if item['tags'][1] == 'partrec':
                 # Remember part number
-                self.selectedpn = item['values'][0]
                 self.pnpopupmenu.tk_popup(event.x_root, event.y_root)
             elif item['tags'][1] == 'mfgpartrec':
-                self.selectedpn = item['values'][3]
                 self.mpnpopupmenu.tk_popup(event.x_root, event.y_root)
 
         else:
@@ -338,29 +341,43 @@ class ShowParts:
 
     def copy_pn(self):
         """
-        Copy part number to clipboard to reduce chance of typos
+        Copy part number or manufacturer part number to clipboard
         :return: N/A
         """
-        pyperclip.copy(self.selectedpn)
-
+        if self.itemvalues[0] != '':
+            pyperclip.copy(self.itemvalues[0])
+        else:
+            pyperclip.copy(self.itemvalues[3])
 
     def edit_description(self):
         """
         Display Dialog box and allow user to edit part description
         :return: N/A
         """
-        title = 'Edit Description: ' + self.selectedpn
-        e = EditDescription(self.parent, pn=self.selectedpn, db=self.db, title=title)
-        self.refresh()
+        title = 'Edit Description: ' + self.itemvalues[0]
+        e = EditDescription(self.parent, values=self.itemvalues, db=self.db, title=title)
+
+        #self.refresh()
+        self.ltree.item(self.itemid, values=self.itemvalues)
 
     def edit_mpn(self):
         """
         Display Dialog box and allow user to edit the manufacturer part number
         :return: N/A
         """
-        title = 'Edit Manufacturer Part Number: ' + self.selectedpn
-        e = EditMPN(self.parent, mpn=self.selectedpn, db=self.db, title=title)
-        self.refresh()
+        title = 'Edit Manufacturer Part Number: ' + self.itemvalues[3]
+        e = EditMPN(self.parent, values=self.itemvalues, db=self.db, title=title)
+
+        self.ltree.item(self.itemid, values=self.itemvalues)
+        #self.refresh()
+
+
+#
+# Add a new part number to the database
+#
+
+def addPN():
+    pass
 #
 #
 #
@@ -431,6 +448,11 @@ if __name__ == '__main__':
     menubar.add_cascade(label="File", menu=filemenu)
     # display the menu
     root.config(menu=menubar)
+
+    editmenu = Menu(menubar, tearoff = 0)
+    menubar.add_cascade(label="Edit", menu=editmenu)
+    editmenu.add_command(label="Add part number", command=addPN)
+
 
     viewmenu = Menu(menubar, tearoff = 0)
     viewmenu.add_command(label="Refresh", command=parts.refresh)
