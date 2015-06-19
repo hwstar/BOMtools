@@ -9,7 +9,8 @@ This set of python scripts allows you to define your own part numbers
 which can then reference a title/description and optionally single
 or multiple manufacturers and manufacturer's part numbers.
 
-The project consists of a BOM manager script (bommgr.py) written in
+The project consists of a BOM manager CLI script (bommgr.py) and
+a Part Manager GUI (tkinter/ttk) script both of which are written in
 Python 3, a BOM costing script written in Python 3,
 and separate merger scripts for
  
@@ -25,7 +26,7 @@ output .csv file with all of the relevant fields included.
 
 Before you run the merge script:
 
-1. Assign part numbers with bommgr.py
+1. Assign part numbers with bommgr.py or partmgr.py
 
 2. For Kicad, you'll need to add a PartNumber field for each reference
 designator on your schematic and include the new part number in
@@ -107,12 +108,15 @@ output imported into a spreadsheet:
 ![ProjectPicture](ScreenshotCost.png)
 
 
-*partview.py*
+*partmgr.py*
 
-This is an expermental GUI part viewer which displays parts in a list form
-for ease of use during part number population of the schematic.
-In its current form, all it does is list the parts. Adding or modifying
-parts still needs to be done using the command line in a terminal window.
+This is an experimental GUI part manager which displays parts in a list form
+for ease of use during part number population of the schematic. It allows part
+numbers and manufacturer part numbers to be pasted to the clipboard. It also allows
+new parts to be added, descriptions to be changed, and manufacturer part
+numbers to be changed. There is still quite a bit of functionality missing
+which will require the use of the command line tool in some cases.
+
 
 *Configuration File*
 
@@ -137,7 +141,7 @@ and the configuration file bommgr.conf needs to point to the location of the dat
 
 *Installation*
 
-The standard python way of installation "setup.py" installs bommgr.py, bomcost.py, and partview.py. I typically install into my home directory
+The standard python way of installation "setup.py" installs bommgr.py, bomcost.py, and partmgr.py. I typically install into my home directory
 with the following command:
 
 `python3 setup.py install --home ~`
