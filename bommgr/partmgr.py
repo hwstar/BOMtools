@@ -164,7 +164,40 @@ class Dialog(Toplevel):
 
         pass # override
 
+#
+# Search Select Dialog Box
+#
 
+class ViewPartsDialog(Dialog):
+    search_items = ['RES,0603%','RES,0805%','CAP,0603%','CAP,0805%','XSTR%','IC%']
+    def __init__(self, parent, title = "View Parts Like", xoffset=50, yoffset=50):
+        if title is None:
+            raise SystemError
+        Dialog.__init__(self, parent, title, xoffset, yoffset)
+
+    def body(self, master):
+        """
+        Present combo box of search items
+        """
+        patframe=Frame(master)
+        Label(patframe, text='Search Pattern').grid(row=0, column=0, sticky=W)
+        self.search_entry = Combobox(patframe, width=50, values=ViewPartsDialog.search_items)
+        self.search_entry.grid(row=0, column=1, sticky=W)
+        patframe.pack()
+        helpframe=Frame(master)
+        Label(helpframe, text='Use % as a wildcard character').pack()
+        helpframe.pack()
+
+    def validate(self):
+        return True
+
+    def apply(self):
+        self.selected = self.search_entry.get()
+        if self.selected not in ViewPartsDialog.search_items:
+            ViewPartsDialog.search_items.append(self.selected)
+
+    def get_selected(self):
+        return self.selected
 #
 # Edit Description dialog box
 #
@@ -417,7 +450,7 @@ class AddPartDialog(Dialog):
     """
     Add part dialog box
     """
-    def __init__(self, parent, title = "Add Part", xoffset=50, yoffset=50, db=None):
+    def __init__(self, parent, title = "Add Part", xoffset=50, yoffset=50, db=None, pnhint='', deschint=''):
         """
 
         :param parent: Parent window
@@ -425,11 +458,16 @@ class AddPartDialog(Dialog):
         :param xoffset: Offset in X direction
         :param yoffset: Offset in Y direction
         :param db: Database object
+        :param pnhint: part number hint
+        :param deschint: description hint
+
         :return: N/A
         """
         if db is None or title is None:
             raise SystemError
         self.db = db
+        self.pnhint = pnhint
+        self.deschint = deschint
         Dialog.__init__(self, parent, title, xoffset, yoffset)
 
     def new_pn(self):
@@ -449,7 +487,10 @@ class AddPartDialog(Dialog):
         return pn
 
     def body(self, master):
-        nextpn = self.new_pn()
+        if self.pnhint != '':
+            nextpn = self.pnhint
+        else:
+            nextpn = self.new_pn()
         self.mfgrs = self.db.get_mfgr_list()
         def_sel = self.mfgrs.index(defaultMfgr)
 
@@ -460,6 +501,8 @@ class AddPartDialog(Dialog):
 
         Label(master, text='Description').grid(row=1, column=0, sticky=W)
         self.desc_entry = Entry(master, width=50)
+        if self.deschint is not '':
+            self.desc_entry.insert(0, self.deschint)
         self.desc_entry.grid(row=1, column=1, sticky=W)
 
         Label(master, text='Manufacturer').grid(row=2, column=0, sticky=W)
@@ -476,8 +519,11 @@ class AddPartDialog(Dialog):
     def validate(self):
 
         # Validate part number
-        x = len(self.pn_entry.get())
+        pn = self.pn_entry.get()
+        x = len(pn)
         if x != 10:
+            return False
+        if pn[6] != '-':
             return False
 
         # Validate description
@@ -543,6 +589,7 @@ class ShowParts:
         self.pnpopupmenu = Menu(self.parent, tearoff=0)
         self.pnpopupmenu.add_command(label="Copy part number to clipboard", command=self.copy_pn)
         self.pnpopupmenu.add_command(label="Edit Description",command=self.edit_description)
+        self.pnpopupmenu.add_command(label="Add tabulated part number", command=self.add_tabulated_part)
         self.pnpopupmenu.add_command(label="Add alternate source", command=self.add_alternate_source)
         self.mpnpopupmenu = Menu(self.parent, tearoff=0)
         self.mpnpopupmenu.add_command(label="Copy manufacturer part number to clipboard", command=self.copy_pn)
@@ -555,6 +602,7 @@ class ShowParts:
         Refresh screen with current list entries
         :return: N/A
         """
+        self.like = like
         if(self.frame is not None):
             self.frame.destroy()
         self.frame = Frame(self.parent)
@@ -664,6 +712,19 @@ class ShowParts:
 
         self.ltree.item(self.itemid, values=self.itemvalues)
 
+    def add_tabulated_part(self):
+        """
+        Add a tabulated part number with the same prefix as the part number clicked on
+        :return: N/A
+        """
+        pnsplit = self.itemvalues[0].split('-')
+        pnhint = pnsplit[0]+'-'
+        deschint = self.itemvalues[1]
+        a = AddPartDialog(self.parent,title='Add Tabulated Part',db=self.db, pnhint=pnhint, deschint=deschint)
+
+        self.refresh(self.like)
+
+
     def add_alternate_source(self):
         """
         Display dialog box and allow user to add an alternate manufacturer and MPN
@@ -703,6 +764,13 @@ def nextFreeMID(db):
 def addPN():
     AddPartDialog(root, db=DB)
     parts.refresh()
+
+
+def viewPartsLike():
+    res = ViewPartsDialog(root)
+    selected=res.get_selected()
+    parts.refresh(selected)
+
 
 #
 #
@@ -778,11 +846,12 @@ if __name__ == '__main__':
 
     editmenu = Menu(menubar, tearoff = 0)
     menubar.add_cascade(label="Edit", menu=editmenu)
-    editmenu.add_command(label="Add part number", command=addPN)
+    editmenu.add_command(label="Add part number...", command=addPN)
 
 
     viewmenu = Menu(menubar, tearoff = 0)
-    viewmenu.add_command(label="Refresh", command=parts.refresh)
+    viewmenu.add_command(label="View All Parts", command=parts.refresh)
+    viewmenu.add_command(label="View Parts Like...", command=viewPartsLike)
     menubar.add_cascade(label="View", menu=viewmenu)
 
 
