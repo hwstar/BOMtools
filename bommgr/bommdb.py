@@ -262,7 +262,7 @@ class BOMdb:
         self.cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)',[pn, mid, newmpn])
         self.conn.commit()
 
-
+# Note: This should really check the old mid as well...
     def update_mid(self, pn, mpn, mid):
         """
         Update a manufacturer ID for a given part number/manufacturer part number combination.
@@ -274,6 +274,20 @@ class BOMdb:
         """
         self.cur.execute('DELETE FROM pnmpn WHERE PartNumber=? AND MPN=? ', [pn, mpn])
         self.cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)',[pn, mid, mpn])
+        self.conn.commit()
+
+
+    def remove_source(self, pn, mfgid, mpn):
+        """
+        Remove a source from the pnmpn table.
+        Requires a match on part number, manufacturer ID, and manufacturer's part number
+
+        :param pn: Part number
+        :param mfgid Manufacturer ID
+        :param mpn: Manufacturer's part number
+        :return: N/A
+        """
+        self.cur.execute('DELETE FROM pnmpn WHERE PartNumber=? AND Manufacturer=? AND MPN=? ', [pn, mfgid, mpn])
         self.conn.commit()
 
 if __name__ == '__main__':

@@ -343,6 +343,62 @@ class AddMfgrDialog(Dialog):
         return self.confirm
 
 #
+# Remove source dialog box
+#
+
+class RemoveSourceDialog(Dialog):
+    def __init__(self, parent, title="Remove Source", xoffset=50, yoffset=50, db=None, pn=None, mfg=None, mpn=None):
+        """
+        :param parent: Parent window
+        :param title: Title of add part dialog box
+        :param xoffset: Offset in X direction
+        :param yoffset: Offset in Y direction
+        :param db: Database object
+        :param pn: Part number
+        :param mfg: Manufacturer
+        :param mpn: Manufacturer part number
+        :return: N/A
+
+        """
+        if(db is None or pn is None or mfg is None or mpn is None):
+            raise SystemError
+        self.db = db
+        self.pn = pn
+        self.mfg = mfg
+        self.mpn = mpn
+        Dialog.__init__(self, parent, title, xoffset, yoffset)
+
+    def body(self, master):
+        Label(master, text='Part Number').grid(row=0, column=0, sticky=W)
+        Label(master, text=self.pn, relief=SUNKEN).grid(row=0, column=1, sticky=W)
+
+        Label(master, text='Manufacturer').grid(row=1, column=0, sticky=W)
+        Label(master, text=self.mfg, relief=SUNKEN).grid(row=1, column=1, sticky=W)
+
+        Label(master, text='Manufacturer Part Number').grid(row=2, column=0, sticky=W)
+        Label(master, text=self.mpn, relief=SUNKEN).grid(row=2, column=1, sticky=W)
+
+        Label(master, text='').grid(row=3, column=0, sticky=W)
+        Label(master, text='').grid(row=3, column=1, sticky=W)
+
+        Label(master, text='Type YES in the box to confirm deletion').grid(row=4, column=0, sticky=W)
+        self.yes_entry = Entry(master, width=3)
+        self.yes_entry.grid(row=4, column=1, sticky=W)
+
+    def validate(self):
+        if self.yes_entry.get() == 'YES':
+            return True
+        else:
+            return False
+
+    def apply(self):
+        res = self.db.lookup_mfg(self.mfg)
+        if res is None:
+            raise SystemError
+        mid = res[1]
+        self.db.remove_source(self.pn, mid, self.mpn)
+
+#
 # Add part dialog box
 #
 
@@ -476,10 +532,12 @@ class ShowParts:
         self.pnpopupmenu = Menu(self.parent, tearoff=0)
         self.pnpopupmenu.add_command(label="Copy part number to clipboard", command=self.copy_pn)
         self.pnpopupmenu.add_command(label="Edit Description",command=self.edit_description)
+        self.pnpopupmenu.add_command(label="Add alternate source", command=self.add_alternate_source)
         self.mpnpopupmenu = Menu(self.parent, tearoff=0)
         self.mpnpopupmenu.add_command(label="Copy manufacturer part number to clipboard", command=self.copy_pn)
         self.mpnpopupmenu.add_command(label="Edit Manufacturer Part Number", command=self.edit_mpn)
-        self.mpnpopupmenu.add_command(label="Add alternate source", command=self.add_alternate_source)
+        self.mpnpopupmenu.add_command(label="Remove this source", command=self.remove_source, state=DISABLED)
+
 
     def refresh(self, like=None):
         """
@@ -552,6 +610,11 @@ class ShowParts:
                 # Remember part number
                 self.pnpopupmenu.tk_popup(event.x_root, event.y_root)
             elif item['tags'][1] == 'mfgpartrec':
+                sources = self.db.lookup_mpn_by_pn(item['tags'][0])
+                if len(sources) > 1:
+                    self.mpnpopupmenu.entryconfig(2, state=NORMAL)
+                else:
+                    self.mpnpopupmenu.entryconfig(2, state=DISABLED)
                 self.mpnpopupmenu.tk_popup(event.x_root, event.y_root)
 
         else:
@@ -598,6 +661,14 @@ class ShowParts:
         """
         a = AddAlternateSourceDialog(self.parent, pn=self.itemtags[0], db=self.db, title="Add Alternate Source")
         self.refresh()
+
+    def remove_source(self):
+        mpn = self.itemvalues[3]
+        mfg = self.itemvalues[2]
+        pn = self.itemtags[0]
+        r = RemoveSourceDialog(self.parent, db=self.db, pn=pn, mfg=mfg, mpn=mpn, title="Remove Source")
+        self.refresh()
+
 #
 # Return the next free manufacturer ID
 #

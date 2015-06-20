@@ -121,9 +121,9 @@ which will require the use of the command line tool in some cases.
 
 * To see the manufacturers and manufacturer part numbers for a given part number, double click on the row.
 
-* To edit a description, right click on a row.
+* To edit a description, or add an alternate source, right click on a part number row.
 
-* To edit a manufacturer part number, right click on an opened manufacturer row.
+* To edit a manufacturer part number, or remove an alternate source right click on an opened manufacturer row.
 
 * New part numbers may be added using the Edit menu.
 
