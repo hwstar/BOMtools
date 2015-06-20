@@ -255,6 +255,7 @@ class AddAlternateSourceDialog(Dialog):
             raise SystemError
         self.db = db
         self.pn = pn
+        self.success = False
         Dialog.__init__(self, parent, title, xoffset, yoffset)
 
 
@@ -316,8 +317,18 @@ class AddAlternateSourceDialog(Dialog):
         """
         Write the new manufacturer part record to the database
         """
-
         self.db.add_mpn(self.pn, self.new_mid, self.new_mpn)
+        self.success = True
+
+    def get_new_mfgpartrec(self):
+        """
+        Return new manufacturer and mpn
+        :return: Dict with pn, mid, mfg and mpn if successful else none
+        """
+        if self.success:
+            return {'pn': self.pn, 'mid': self.new_mid, 'mfg': self.new_mname, 'mpn': self.new_mpn}
+        else:
+            return None
 
 #
 # Add manufacturer confirmation dialog box
@@ -660,14 +671,17 @@ class ShowParts:
 
         """
         a = AddAlternateSourceDialog(self.parent, pn=self.itemtags[0], db=self.db, title="Add Alternate Source")
-        self.refresh()
+        res = a.get_new_mfgpartrec()
+        if res is not None:
+            # Only insert in tree if the add was successful
+            self.ltree.insert(self.itemid, 'end', tag=[res['pn'],'mfgpartrec'], values=['','',res['mfg'], res['mpn']] )
 
     def remove_source(self):
         mpn = self.itemvalues[3]
         mfg = self.itemvalues[2]
         pn = self.itemtags[0]
         r = RemoveSourceDialog(self.parent, db=self.db, pn=pn, mfg=mfg, mpn=mpn, title="Remove Source")
-        self.refresh()
+        self.ltree.delete(self.itemid)
 
 #
 # Return the next free manufacturer ID
