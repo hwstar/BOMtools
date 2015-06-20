@@ -234,6 +234,93 @@ class EditMPN(Dialog):
         self.values[3] = newmpn
 
 
+#
+# Add alternate source dialog box
+#
+
+class AddAlternateSourceDialog(Dialog):
+    """
+    Add part dialog box
+    """
+    def __init__(self, parent, title = "Add Alternate Source", xoffset=50, yoffset=50, db=None, pn=None):
+        """
+        :param parent: Parent window
+        :param title: Title of add part dialog box
+        :param xoffset: Offset in X direction
+        :param yoffset: Offset in Y direction
+        :param db: Database object
+        :return: N/A
+        """
+        if db is None or title is None or pn is None:
+            raise SystemError
+        self.db = db
+        self.pn = pn
+        Dialog.__init__(self, parent, title, xoffset, yoffset)
+
+
+    def body(self, master):
+        """
+        Display the fields for the manufacturer part number
+        :param master: Parent window
+        """
+        self.mfgrs = self.db.get_mfgr_list()
+        def_sel = self.mfgrs.index(defaultMfgr)
+
+        Label(master, text='Manufacturer').grid(row=2, column=0, sticky=W)
+        self.mfgr_entry = Combobox(master, width=30, values=self.mfgrs)
+        self.mfgr_entry.current(def_sel)
+        self.mfgr_entry.grid(row=2, column=1, sticky=W)
+
+        Label(master, text='Manufacturer Part Number').grid(row=3, column=0, sticky=W)
+        self.mpn_entry = Entry(master, width=30)
+        self.mpn_entry.insert(0, defaultMpn)
+        self.mpn_entry.grid(row=3, column=1, sticky=W)
+
+
+    def validate(self):
+        """
+        Validate manufacturer part number
+        """
+        x = len(self.mpn_entry.get())
+        if x < 3 or x > 30:
+            return False
+
+        # Validate manufacturer, and add a new manufacturer if need be
+        self.new_mname = self.mfgr_entry.get()
+        if self.new_mname not in self.mfgrs:
+            confirm_mfg = AddMfgrDialog(self.parent, new_mfg=self.new_mname)
+            if confirm_mfg.confirmed() is False:
+                return False
+            else:
+                nextmid = nextFreeMID(self.db)
+                # Add manufacturer and MID to manufacturer list
+                self.db.add_mfg_to_mlist(self.new_mname, nextmid)
+                self.mfgrs.append(self.new_mname)
+
+        # Get the mid for the manufacturer name
+        res = self.db.lookup_mfg(self.new_mname)
+        if res is None:
+            raise SystemError
+        self.new_mid = res[1]
+
+        # Check for duplicate manufacturer part record
+        sources = self.db.lookup_mpn_by_pn(self.pn)
+        self.new_mpn = self.mpn_entry.get()
+        for item in sources:
+            if self.new_mname == item['mname'] and self.new_mpn == item['mpn']:
+                return False # Item already a valid source
+
+        return True
+
+    def apply(self):
+        """
+        Write the new manufacturer part record to the database
+        """
+
+        self.db.add_mpn(self.pn, self.new_mid, self.new_mpn)
+
+#
+# Add manufacturer confirmation dialog box
 
 class AddMfgrDialog(Dialog):
     def __init__(self, parent, title="Add Manufacturer", xoffset=50, yoffset=50, new_mfg=None):
@@ -392,8 +479,7 @@ class ShowParts:
         self.mpnpopupmenu = Menu(self.parent, tearoff=0)
         self.mpnpopupmenu.add_command(label="Copy manufacturer part number to clipboard", command=self.copy_pn)
         self.mpnpopupmenu.add_command(label="Edit Manufacturer Part Number", command=self.edit_mpn)
-
-
+        self.mpnpopupmenu.add_command(label="Add alternate source", command=self.add_alternate_source)
 
     def refresh(self, like=None):
         """
@@ -421,9 +507,6 @@ class ShowParts:
 
         parts = self.db.get_parts(like)
 
-
-
-
         for row,(pn,desc) in enumerate(parts):
             mfg = defaultMfgr
             mpn = defaultMpn
@@ -435,13 +518,11 @@ class ShowParts:
             if minfo == []: # Use defaults if it no MPN and manufacturer
                 minfo =[{'mname':defaultMfgr,'mpn':defaultMpn}]
 
-
             for i,item in enumerate(minfo):
                 mfg = item['mname']
                 mpn = item['mpn']
                 #self.ltree.insert("", "end", "", values=((pn, desc, mfg, mpn)), tags=(row))
                 self.ltree.insert(parent_iid, "end", "", tag=[pn,'mfgpartrec'], values=(('', '', mfg, mpn)))
-
 
         # add tree and scrollbars to frame
         self.ltree.grid(in_=self.frame, row=0, column=0, sticky=NSEW)
@@ -450,7 +531,6 @@ class ShowParts:
         # set frame resizing priorities
         self.frame.rowconfigure(0, weight=1)
         self.frame.columnconfigure(0, weight=1)
-
 
     def popup(self, event):
         """
@@ -467,6 +547,7 @@ class ShowParts:
             self.ltree.selection_set(iid)
             item = self.ltree.item(iid)
             self.itemvalues = item['values']
+            self.itemtags = item['tags']
             if item['tags'][1] == 'partrec':
                 # Remember part number
                 self.pnpopupmenu.tk_popup(event.x_root, event.y_root)
@@ -497,7 +578,6 @@ class ShowParts:
         title = 'Edit Description: ' + self.itemvalues[0]
         e = EditDescription(self.parent, values=self.itemvalues, db=self.db, title=title)
 
-        #self.refresh()
         self.ltree.item(self.itemid, values=self.itemvalues)
 
     def edit_mpn(self):
@@ -509,7 +589,26 @@ class ShowParts:
         e = EditMPN(self.parent, values=self.itemvalues, db=self.db, title=title)
 
         self.ltree.item(self.itemid, values=self.itemvalues)
-        #self.refresh()
+
+    def add_alternate_source(self):
+        """
+        Display dialog box and allow user to add an alternate manufacturer and MPN
+        :return:N/A
+
+        """
+        a = AddAlternateSourceDialog(self.parent, pn=self.itemtags[0], db=self.db, title="Add Alternate Source")
+        self.refresh()
+#
+# Return the next free manufacturer ID
+#
+
+def nextFreeMID(db):
+    mid = db.last_mid()
+    if mid is not None:
+        mid = int(mid[1:]) + 1
+    else:
+        mid = 0
+    return 'M{num:07d}'.format(num=mid)
 
 
 #
