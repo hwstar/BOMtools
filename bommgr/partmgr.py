@@ -629,17 +629,7 @@ class ShowParts:
             mpn = defaultMpn
             parent_iid = self.ltree.insert("", "end", "", tag=[pn,'partrec'], values=((pn, desc, '', '')))
 
-            # Try to retrieve manufacturer info
-            minfo = self.db.lookup_mpn_by_pn(pn)
-
-            if minfo == []: # Use defaults if it no MPN and manufacturer
-                minfo =[{'mname':defaultMfgr,'mpn':defaultMpn}]
-
-            for i,item in enumerate(minfo):
-                mfg = item['mname']
-                mpn = item['mpn']
-                #self.ltree.insert("", "end", "", values=((pn, desc, mfg, mpn)), tags=(row))
-                self.ltree.insert(parent_iid, "end", "", tag=[pn,'mfgpartrec'], values=(('', '', mfg, mpn)))
+            self.populate_source_list(pn, parent_iid)
 
         # add tree and scrollbars to frame
         self.ltree.grid(in_=self.frame, row=0, column=0, sticky=NSEW)
@@ -724,6 +714,35 @@ class ShowParts:
 
         self.refresh(self.like)
 
+    def populate_source_list(self, pn, itemid):
+        """
+        Build the list of sources (mfg, mpn)
+        :param pn:
+        :param itemid:
+        :return:
+        """
+        res = self.db.lookup_mpn_by_pn(pn)
+
+        # If no MFG/MPN, use default
+
+        if res == []:
+            res =[{'mname':defaultMfgr,'mpn':defaultMpn}]
+
+        for item in res:
+            mfg = item['mname']
+            mpn = item['mpn']
+            self.ltree.insert(itemid, "end", "", tag=[pn,'mfgpartrec'], values=(('', '', mfg, mpn)))
+
+    def rebuild_source_list(self, pn, itemid):
+        """
+        Rebuild the list of children
+        :param: parent part number
+        :param: parent item id
+        """
+        children = self.ltree.get_children(itemid)
+        self.ltree.delete(children)
+
+        self.populate_source_list(pn, itemid)
 
     def add_alternate_source(self):
         """
@@ -732,10 +751,8 @@ class ShowParts:
 
         """
         a = AddAlternateSourceDialog(self.parent, pn=self.itemtags[0], db=self.db, title="Add Alternate Source")
-        res = a.get_new_mfgpartrec()
-        if res is not None:
-            # Only insert in tree if the add was successful
-            self.ltree.insert(self.itemid, 'end', tag=[res['pn'],'mfgpartrec'], values=['','',res['mfg'], res['mpn']] )
+
+        self.rebuild_source_list(self.itemtags[0], self.itemid)
 
     def remove_source(self):
         mpn = self.itemvalues[3]
