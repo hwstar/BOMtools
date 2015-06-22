@@ -683,7 +683,7 @@ class ShowParts:
                 # Pull datasheet path from database if it is available
                 self.datasheet = None
                 for source in sources:
-                    if source['mpn'] == self.itemvalues[3]:
+                    if source['mpn'] == str(self.itemvalues[3]):
                         self.datasheet = source['datasheet']
 
 
