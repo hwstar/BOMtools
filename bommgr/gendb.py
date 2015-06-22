@@ -53,7 +53,7 @@ conn.commit()
 
 # Create the pnmpn table
 
-conn.execute('CREATE TABLE pnmpn (PartNumber TEXT,Manufacturer TEXT, MPN TEXT)')
+conn.execute('CREATE TABLE pnmpn (PartNumber TEXT,Manufacturer TEXT, MPN TEXT, DataSheet TEXT)')
 conn.commit()
 
 # Create the mlist table
@@ -64,7 +64,7 @@ conn.commit()
 
 #Create the version table
 conn.execute('CREATE TABLE version (major INTEGER,minor INTEGER)')
-conn.execute('INSERT INTO version (major,minor) VALUES(?,?)', [0,0])
+conn.execute('INSERT INTO version (major,minor) VALUES(?,?)', [0,1])
 conn.commit()
 
 #Create the config table

@@ -29,6 +29,15 @@ class BOMdb:
         self.conn = sqlite3.connect(dbfile)
         self.cur = self.conn.cursor()
 
+        self.major = 0
+        self.minor = 0
+
+        self.cur.execute('SELECT major,minor FROM version')
+        res = self.cur.fetchone()
+        if res is not None:
+            self.major = int(res[0])
+            self.minor = int(res[1])
+
     def _get_conn(self):
         return self.conn
 
@@ -127,6 +136,39 @@ class BOMdb:
 
         return (pn, mname, mpn, mid)
 
+
+    def lookup_mfg_by_pn_mpn(self, pn, mpn):
+        """
+        "Look up by part number and  manufacturer part number"
+        "param: pn: Part number
+        :param mpn: a manufacturer part number
+        :return: a tuple containing: (manufacturer name, manufacturer ID)
+        """
+
+        self.cur.execute('SELECT Manufacturer FROM pnmpn WHERE PartNumber = ? AND MPN = ?', [pn, mpn])
+        res = self.cur.fetchone()
+        if(res is None):
+            return None
+        mid = res[0]
+
+
+        # Convert Manufacturer ID to name
+
+        res = self.lookup_mfg_by_id(mid)
+        if res is not None:
+            mname = res[0]
+        else:
+            raise(ValueError) # Something is messed up in the database
+
+        return (mname, mid)
+
+    def mfg_table_has_datasheet_col(self):
+        """
+        :return: True if database version supports datasheet column in manufacturing table
+        """
+        return (self.major + (self.minor >= 1)) > 0
+
+
     def lookup_mpn_by_pn(self, pn):
         """
         Returns all valid manufacturers and manufacturer part numbers for a part number specified.
@@ -135,14 +177,24 @@ class BOMdb:
         :return: Returns a list of dictionaries containing the manufacturer information for the part number
         Dictionary contents: {pn: Part Number, mid: Manufacturer ID, mpn: Manufacturer Part Number
         mname: Manufacturer Name}
+
         """
 
-        self.cur.execute('SELECT PartNumber,Manufacturer,MPN FROM pnmpn WHERE PartNumber = ?', [pn])
+        hdc = self.mfg_table_has_datasheet_col()
+
+        if hdc:
+            self.cur.execute('SELECT PartNumber,Manufacturer,MPN,DataSheet FROM pnmpn WHERE PartNumber = ?', [pn])
+        else:
+            self.cur.execute('SELECT PartNumber,Manufacturer,MPN FROM pnmpn WHERE PartNumber = ?',[pn])
+
         res = self.cur.fetchall()
 
         reslist = []
         for item in res:
-            reslist.append({'pn' : item[0],'mid' : item[1], 'mpn' : item[2]})
+            if hdc:
+                reslist.append({'pn' : item[0],'mid' : item[1], 'mpn' : item[2],'datasheet':item[3]})
+            else:
+                reslist.append({'pn' : item[0],'mid' : item[1], 'mpn' : item[2],'datasheet':None})
 
         for i,item in enumerate(reslist):
             # Convert Manufacturer ID to name
@@ -260,6 +312,20 @@ class BOMdb:
         """
         self.cur.execute('DELETE FROM pnmpn WHERE PartNumber=? AND MPN=? ', [pn, curmpn])
         self.cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)',[pn, mid, newmpn])
+        self.conn.commit()
+
+    def update_datasheet(self, pn, mid, mpn, datasheet):
+        """
+        Update a datasheet for a given part number/mid/manufacturer part number combination.
+
+        :param pn: Affected part number
+        :param mid: Manufacturer ID
+        :param mpn: Affected manufacturer part number
+        :param datasheet: Path to datasheet file
+        :return:
+        """
+        self.cur.execute('DELETE FROM pnmpn WHERE PartNumber=? AND Manufacturer=? AND MPN=? ', [pn, mid, mpn])
+        self.cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN,DataSheet) VALUES (?,?,?,?)',[pn, mid, mpn, datasheet])
         self.conn.commit()
 
 # Note: This should really check the old mid as well...

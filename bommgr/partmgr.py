@@ -19,9 +19,11 @@
 
 __author__ = 'srodgers'
 
+import subprocess
 import configparser
 from tkinter import *
 from tkinter.ttk import *
+from tkinter.filedialog import askopenfilename
 import pyperclip
 from bommdb import *
 
@@ -585,16 +587,32 @@ class ShowParts:
         self.parent = parent
         self.frame = None
         self.db = db
+        self.dsdir = general.get('datasheets', None)
+        if self.dsdir is not None:
+            self.dsdir = os.path.expanduser(self.dsdir)
+        self.pdfviewer = general.get('pdfviewer', None)
         # create a popup menu
         self.pnpopupmenu = Menu(self.parent, tearoff=0)
         self.pnpopupmenu.add_command(label="Copy part number to clipboard", command=self.copy_pn)
         self.pnpopupmenu.add_command(label="Edit Description",command=self.edit_description)
         self.pnpopupmenu.add_command(label="Add tabulated part number", command=self.add_tabulated_part)
         self.pnpopupmenu.add_command(label="Add alternate source", command=self.add_alternate_source)
+
+
         self.mpnpopupmenu = Menu(self.parent, tearoff=0)
         self.mpnpopupmenu.add_command(label="Copy manufacturer part number to clipboard", command=self.copy_pn)
+
+        self.hdc = self.db.mfg_table_has_datasheet_col()
+
+        self.mpnpopupmenu.add_command(label="Open Data Sheet", command=self.open_data_sheet, state = DISABLED)
+
         self.mpnpopupmenu.add_command(label="Edit Manufacturer Part Number", command=self.edit_mpn)
+
+        self.mpnpopupmenu.add_command(label="Associate Data Sheet...", command=self.associate_data_sheet, state=DISABLED)
+
+
         self.mpnpopupmenu.add_command(label="Remove this source", command=self.remove_source, state=DISABLED)
+
 
 
     def refresh(self, like=None):
@@ -615,6 +633,7 @@ class ShowParts:
         self.ltree.heading('#2', text='Description', anchor=W)
         self.ltree.heading('#3', text='Manufacturer', anchor=W)
         self.ltree.heading('#4', text='Manufacturer Part Number', anchor=W)
+
         self.ltree.column('#1', stretch=NO, minwidth=0, width=200)
         self.ltree.column('#2', stretch=NO, minwidth=0, width=500)
         self.ltree.column('#3', stretch=NO, minwidth=0, width=300)
@@ -660,10 +679,40 @@ class ShowParts:
                 self.pnpopupmenu.tk_popup(event.x_root, event.y_root)
             elif item['tags'][1] == 'mfgpartrec':
                 sources = self.db.lookup_mpn_by_pn(item['tags'][0])
-                if len(sources) > 1:
-                    self.mpnpopupmenu.entryconfig(2, state=NORMAL)
+
+                # Pull datasheet path from database if it is available
+                self.datasheet = None
+                for source in sources:
+                    if source['mpn'] == self.itemvalues[3]:
+                        self.datasheet = source['datasheet']
+
+
+                # Enable the datasheet selection if there is a path specified in the config file
+                # The datasheet is specified in the manufacturer table,
+                # the default manufacturer is not specified, and
+                # the path to the pdf viewer is specified in the config file
+
+                if self.hdc is True and self.datasheet is not None \
+                        and self.dsdir is not None\
+                        and self.pdfviewer is not None\
+                        and self.itemvalues[2] != defaultMfgr:
+                    self.mpnpopupmenu.entryconfig(1, state=NORMAL)
                 else:
-                    self.mpnpopupmenu.entryconfig(2, state=DISABLED)
+                    self.mpnpopupmenu.entryconfig(1, state=DISABLED)
+
+                # If we have the datasheet column
+                if self.hdc is True:
+                    # Enable if not the default manufacturer
+                    if self.itemvalues[2] != defaultMfgr:
+                            self.mpnpopupmenu.entryconfig(3, state=NORMAL)
+                    else:
+                            self.mpnpopupmenu.entryconfig(3, state=DISABLED)
+
+                # If more than one source, then enable the removal of a source
+                if len(sources) > 1:
+                    self.mpnpopupmenu.entryconfig(4 , state=NORMAL)
+                else:
+                    self.mpnpopupmenu.entryconfig(4, state=DISABLED)
                 self.mpnpopupmenu.tk_popup(event.x_root, event.y_root)
 
         else:
@@ -755,11 +804,57 @@ class ShowParts:
         self.rebuild_source_list(self.itemtags[0], self.itemid)
 
     def remove_source(self):
+        """
+        Remove a source from the database
+        :return: N/A
+        """
         mpn = self.itemvalues[3]
         mfg = self.itemvalues[2]
         pn = self.itemtags[0]
         r = RemoveSourceDialog(self.parent, db=self.db, pn=pn, mfg=mfg, mpn=mpn, title="Remove Source")
         self.ltree.delete(self.itemid)
+
+
+    def open_data_sheet(self):
+        """
+        Run the pdf viewer to display the datasheet
+        :return: N/A
+        """
+        if self.datasheet[0] == os.pathsep:
+            pdfpath = self.datasheet[0] # Path is absolute
+        else:
+            pdfpath = os.path.join(self.dsdir, self.datasheet) # Path is relative to datasheet directory
+        subprocess.Popen((self.pdfviewer, pdfpath))
+
+
+    def associate_data_sheet(self):
+        """
+        Associate a datasheet to a manufacturer part number
+
+        :return: N/A
+        """
+        # Get the path to the datasheet from the user
+        path = askopenfilename(parent=root, initialdir=self.dsdir, defaultextension='.pdf', title='Associate Datasheet')
+        print(len(path))
+        # If something was entered, then store the path in the manufacturer table
+        if path is not None and len(path):
+            # If it starts with the datasheet directory, remove that from the path name plus the leading separator
+            if path.startswith(self.dsdir):
+                path = path[len(self.dsdir) + 1:]
+
+            # Get every key needed to do the update
+            pn = self.itemtags[0]
+            mpn = self.itemvalues[3]
+            res = self.db.lookup_mfg_by_pn_mpn(pn, mpn)
+            if res is None:
+                raise SystemError
+            mid = res[1]
+
+            #print(pn, mpn, mid, path)
+
+            # update the path
+
+            self.db.update_datasheet(pn, mid, mpn, path)
 
 #
 # Return the next free manufacturer ID
@@ -874,6 +969,7 @@ if __name__ == '__main__':
 
     # display the menu
     root.config(menu=menubar)
+
 
     parts.refresh()
 
