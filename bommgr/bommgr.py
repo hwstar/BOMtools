@@ -161,7 +161,7 @@ def newPart(desc, newpn = None, mfg='', mpn=''):
 
     if(len(desc) == 0 or len(desc) > 50):
         print("Error: Description must be between 1 and 50 characters")
-        raise ValueError
+        sys.exit(2)
 
     # Define the next part number to be used
 
@@ -170,7 +170,7 @@ def newPart(desc, newpn = None, mfg='', mpn=''):
         pinfo = DB.lookup_pn(newpn)
         if(pinfo is not None):
             print('Error: Part number {} already exists'.format(newpn))
-            raise(ValueError)
+            sys.exit(2)
         validatePN(newpn)
         pn = newpn
     else:
@@ -179,10 +179,10 @@ def newPart(desc, newpn = None, mfg='', mpn=''):
     # Avoid duplicate part number assignment if mpn is not N/A
 
     if mpn is not None:
-        minfo = DB.lookup_mpn(mpn)
+        minfo = DB.lookup_mpn(mpn) # This is a check to see if the MPM exists anywhere else
         if mpn != defaultMpn and minfo is not None and minfo[1] == mfg:
             print("Error: MPN already exists with same manufacturer under part number {}".format(minfo[0]))
-            raise(ValueError)
+            sys.exit(2)
 
     # Check to see if the manufacturer exists
     minfo = DB.lookup_mfg(mfg)
@@ -195,17 +195,12 @@ def newPart(desc, newpn = None, mfg='', mpn=''):
     mname = minfo[0]
     mid = minfo[1]
 
+
     # We now have a valid pn, desc, mname, mpn, and mid. Insert the pn and description in the pndesc table,
     # and insert the pn, mid, and mpn in the pnmpn table
 
-   # Insert part number and description
-    cur.execute('INSERT INTO pndesc (PartNumber,Description) VALUES (?,?)', [pn, desc])
+    DB.add_pn(pn, desc, mid, mpn)
 
-   # Insert part number, manufacturer id, and manufactuer part number
-    cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)', [pn, mid, mpn])
-
-    # Save (commit) the changes
-    conn.commit()
     return pn
 
 
@@ -256,28 +251,37 @@ def queryPN(pn):
 
 def modifyMPN(partnumber, curmpn, newmpn):
     global DB
-    res = DB.lookup_mpn(curmpn)
+    res = DB.lookup_mfg_by_pn_mpn(partnumber, curmpn)
     if res is None:
         print('Error: Can\'t get current MPN record')
         raise SystemError
-    mid = res[3]
+    mid = res[1]
     DB.update_mpn(partnumber, curmpn, newmpn, mid)
 
 
 # Modify manufacturer name for a given part number and MPN
 
-def modifyMFG(partnumber, curmpn, newmfgid):
+def modifyMFG(partnumber, curpn, curmpn, newmfgid):
     global DB
-    res = DB.lookup_mpn(curmpn)
+
+    res = DB.lookup_mfg_by_pn_mpn(curpn, curmpn)
+
+
     if res is None:
         print('Error: Unknown MPN {}'.format(curmpn))
         raise SystemError
+
+    # Extract old mid
+    oldmfgid = res[1]
+
+    # Check to see new mid exists
     res = DB.lookup_mfg_by_id(newmfgid)
     if res is None:
         print('Error: Unknown manufacturer ID {}'.format(newmfgid))
         raise SystemError
 
-    DB.update_mid(partnumber, curmpn, newmfgid)
+    # Update the manufacturer part record
+    DB.update_mid(partnumber, curmpn, oldmfgid, newmfgid)
 
 
 if __name__ == '__main__':
@@ -538,7 +542,7 @@ if __name__ == '__main__':
         elif args.modifywhat == 'mpn' :
             curmpn = args.curmpn
             newmpn = args.newmpn
-            res = DB.lookup_mpn(curmpn)
+            res = DB.lookup_mfg_by_pn_mpn(partnumber, curmpn)
             if(res is None):
                 print('Error: no such manufacturer part number {}'.format(curmpn))
                 sys.exit(2)
@@ -546,13 +550,15 @@ if __name__ == '__main__':
 
         # Modify manufacturer
         elif args.modifywhat == 'mfg':
+            curpn = args.partnumber
             curmpn = args.curmpn
             mfgr = args.manufacturer
-            res = DB.lookup_mpn(curmpn)
+            res = DB.lookup_mfg_by_pn_mpn(curpn, curmpn)
             if(res is None):
                 print('Error: no such manufacturer part number {}'.format(curmpn))
                 sys.exit(2)
-            # See if mfgr already exists
+
+            # See if new mfgr already exists
             res = DB.lookup_mfg(mfgr)
             if res is None:
                 if args.forcenewmfg:
@@ -561,10 +567,10 @@ if __name__ == '__main__':
                     # Get the newly assigned mid
                     res = DB.lookup_mfg(mfgr)
                 else:
-                    print('Error: Manufacturer {} not in database. Add with --forcenewmfg'.format(mfgr))
+                    print('Error: New manufacturer {} not in database. Add with --forcenewmfg'.format(mfgr))
                     sys.exit(2)
-            mid = res[1]
-            modifyMFG(partnumber, curmpn, mid)
+            newmid = res[1]
+            modifyMFG(partnumber, curpn, curmpn, newmid)
 
 
         # Modify menufacturer name in manufacturer's list

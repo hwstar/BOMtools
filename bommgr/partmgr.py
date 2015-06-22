@@ -238,17 +238,18 @@ class EditDescription(Dialog):
 #
 
 class EditMPN(Dialog):
-    def __init__(self, parent, title = None, xoffset=50, yoffset=50, values=None, db=None):
-        if db is None or values is None or title is None:
+    def __init__(self, parent, title = None, xoffset=50, yoffset=50, values=None, db=None, tags=None):
+        if db is None or values is None or title is None or tags is None:
             raise SystemError
         self.db = db
         self.values = values
+        self.tags = tags
         Dialog.__init__(self, parent, title, xoffset, yoffset)
 
     def body(self, master):
         Label(master, text='Manufacturer Part Number').grid(row=0, column=0, sticky=W)
         self.mpn_entry = Entry(master, width=30)
-        partinfo = self.db.lookup_mpn(self.values[3])
+        partinfo = self.db.lookup_part_by_pn_mpn(self.tags[0], self.values[3])
         if partinfo is None:
             raise SystemError
         self.mpn_entry.insert(0, partinfo[2])
@@ -262,7 +263,7 @@ class EditMPN(Dialog):
         return True
 
     def apply(self):
-        (pn, mname, mpn, mid) = self.db.lookup_mpn(self.values[3])
+        (pn, mname, mpn, mid) = self.db.lookup_part_by_pn_mpn(self.tags[0], self.values[3])
         newmpn = self.mpn_entry.get()
         self.db.update_mpn(pn, mpn,
                            newmpn, mid)
@@ -747,7 +748,7 @@ class ShowParts:
         :return: N/A
         """
         title = 'Edit Manufacturer Part Number: ' + self.itemvalues[3]
-        e = EditMPN(self.parent, values=self.itemvalues, db=self.db, title=title)
+        e = EditMPN(self.parent, values=self.itemvalues, tags=self.itemtags, db=self.db, title=title)
 
         self.ltree.item(self.itemid, values=self.itemvalues)
 

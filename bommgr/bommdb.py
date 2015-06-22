@@ -113,7 +113,9 @@ class BOMdb:
 
     def lookup_mpn(self, mpn):
         """
-        "Look up a manufacturer part number"
+        Look up a manufacturer part number
+        Warning: Use this method to see if an mpn exists anywhere queries only.
+        Use lookup_part_by_pn_mpn when changing a manufacturer part record.
         :param mpn: a manufacturer part number
         :return: a tuple containing: (part number, manufacturer name, manufacturer part number, manufacturer ID)
         """
@@ -136,6 +138,30 @@ class BOMdb:
 
         return (pn, mname, mpn, mid)
 
+    def lookup_part_by_pn_mpn(self, pn, mpn):
+        """
+        Look up a manufacturer part record by part number and manufacturer part number
+        :param mpn: a manufacturer part number
+        :return: a tuple containing: (part number, manufacturer name, manufacturer part number, manufacturer ID)
+        """
+
+        self.cur.execute('SELECT PartNumber,Manufacturer,MPN FROM pnmpn WHERE PartNumber = ? AND MPN = ?', [pn, mpn])
+        res = self.cur.fetchone()
+        if(res is None):
+            return None
+        pn = res[0]
+        mid = res[1]
+        mpn = res[2]
+
+        # Convert Manufacturer ID to name
+
+        res = self.lookup_mfg_by_id(mid)
+        if res is not None:
+            mname = res[0]
+        else:
+            raise(ValueError) # Something is messed up in the database
+
+        return (pn, mname, mpn, mid)
 
     def lookup_mfg_by_pn_mpn(self, pn, mpn):
         """
@@ -328,8 +354,8 @@ class BOMdb:
         self.cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN,DataSheet) VALUES (?,?,?,?)',[pn, mid, mpn, datasheet])
         self.conn.commit()
 
-# Note: This should really check the old mid as well...
-    def update_mid(self, pn, mpn, mid):
+
+    def update_mid(self, pn, mpn, oldmid, newmid):
         """
         Update a manufacturer ID for a given part number/manufacturer part number combination.
 
@@ -338,8 +364,8 @@ class BOMdb:
         :param mid: New manufacturer ID
         :return:
         """
-        self.cur.execute('DELETE FROM pnmpn WHERE PartNumber=? AND MPN=? ', [pn, mpn])
-        self.cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)',[pn, mid, mpn])
+        self.cur.execute('DELETE FROM pnmpn WHERE PartNumber=? AND MPN=? AND Manufacturer=? ', [pn, mpn, oldmid])
+        self.cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)',[pn, newmid, mpn])
         self.conn.commit()
 
 
