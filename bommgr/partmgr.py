@@ -85,9 +85,9 @@ class Dialog(Toplevel):
 
         self.result = None
 
-        body = Frame(self)
-        self.initial_focus = self.body(body)
-        body.pack(padx=5, pady=5)
+        self.bodyframe = Frame(self)
+        self.initial_focus = self.body(self.bodyframe)
+        self.bodyframe.pack(padx=5, pady=5)
 
         self.buttonbox()
 
@@ -167,6 +167,38 @@ class Dialog(Toplevel):
         pass # override
 
 #
+# Error popup box
+#
+
+class ErrorPopUp(Dialog):
+
+    def __init__(self, parent, title = "Error", xoffset=50, yoffset=50, message=None):
+        if title is None or Message is None:
+            raise SystemError
+        self.message=message
+        Dialog.__init__(self, parent, title, xoffset, yoffset)
+
+
+
+    def buttonbox(self):
+        # Override
+        # standard buttons
+
+        box = Frame(self)
+
+        w = Button(box, text="OK", width=10, command=self.ok, default=ACTIVE)
+        w.pack(side=LEFT, padx=5, pady=5)
+
+        self.bind("<Return>", self.cancel)
+        self.bind("<Escape>", self.cancel)
+
+        box.pack()
+
+    def body(self, master):
+        # Print the error message
+        Label(master, text=self.message).pack(anchor=W)
+
+#
 # Search Select Dialog Box
 #
 
@@ -232,6 +264,54 @@ class EditDescription(Dialog):
         self.db.update_title(self.values[0], title_entry_text)
         self.values[1] = title_entry_text
 
+
+#
+# Edit Manufacturer dialog box
+#
+
+class EditManufacturer(Dialog):
+    def __init__(self, parent, title = None, xoffset=50, yoffset=50, values=None, db=None):
+        if db is None or values is None or title is None:
+            raise SystemError
+        self.db = db
+        self.values = values
+        Dialog.__init__(self, parent, title, xoffset, yoffset)
+
+    def body(self, master):
+        """
+        Print dialog box body
+        """
+        Label(master, text='Manufacturer').grid(row=0, column=0, sticky=W)
+        self.title_entry = Entry(master, width=30)
+        self.title_entry.insert(0, self.values[0])
+        self.title_entry.grid(row=0, column=1, sticky=W)
+
+    def validate(self):
+        """
+        Validate dialog box contents
+        """
+        self.newmfgname = self.title_entry.get()
+        if len(self.newmfgname) < 3 or len(self.newmfgname) > 30:
+            return False
+        # Did it change
+        if self.newmfgname != self.values[0]:
+            # Check to see if the user is defining a manufacturer already in the database
+            res = self.db.lookup_mfg(self.newmfgname)
+            if res is not None:
+                e=ErrorPopUp(self.bodyframe, message="Manufacturer already defined")
+                return False
+        return True
+
+    def apply(self):
+        """
+        Apply dialog box changes
+        """
+        res = self.db.lookup_mfg(self.values[0]) # Get old mfg info
+        if res is None:
+            raise SystemError
+        mid = res[1]
+        self.db.update_mfg(mid, self.newmfgname)
+        self.values[0] = self.newmfgname
 
 #
 # Edit Manufacturer's part number dialog box
@@ -578,16 +658,97 @@ class AddPartDialog(Dialog):
         self.db.add_pn(pn, desc, mid, mpn)
 
 
+#
+# Base class for displaying part numbers and manufacturers
+#
+
+class DisplayFrame:
+    frame = None # Class variable shared between siblings
+    def __init__(self, parent, db):
+        self.parent = parent
+        self.db = db
+
+
+#
+# Class to show manufacturers
+#
+
+class ShowManufacturers(DisplayFrame):
+    def __init__(self, parent, db):
+        DisplayFrame.__init__(self, parent, db)
+        self.empopupmenu = Menu(self.parent, tearoff=0)
+        self.empopupmenu.add_command(label="Edit Manufacturer...", command=self.edit_mfg)
+
+
+
+    def refresh(self):
+        """
+        Refresh screen with current list entries
+        :return: N/A
+        """
+        if(DisplayFrame.frame is not None):
+            DisplayFrame.frame.destroy()
+        DisplayFrame.frame = Frame(self.parent)
+        self.frame = DisplayFrame.frame
+        self.frame.pack(side=TOP, fill=BOTH, expand=Y)
+        self.ltree = Treeview(height="26", columns=("Manufacturer"))
+        ysb = Scrollbar(orient='vertical', command=self.ltree.yview)
+        xsb = Scrollbar(orient='horizontal', command=self.ltree.xview)
+        self.ltree.configure(xscroll=xsb.set, yscroll=ysb.set)
+        self.ltree.heading('#1', text='Manufacturer', anchor=W)
+
+
+        self.ltree.column('#1', stretch=YES, minwidth=0, width=200)
+        self.ltree.column('#0', stretch=NO, minwidth=0, width=0) #width 0 for special heading
+        self.ltree.bind("<Button-3>", self.popup)
+
+        manufacturers = self.db.get_mfgrs()
+        for manuf in manufacturers:
+            parent_iid = self.ltree.insert("", "end", "", tag=[manuf,'mfgrec'], values=(manuf[0],))
+
+        # add tree and scrollbars to frame
+        self.ltree.grid(in_=self.frame, row=0, column=0, sticky=NSEW)
+        ysb.grid(in_=self.frame, row=0, column=1, sticky=NS)
+        xsb.grid(in_=self.frame, row=1, column=0, sticky=EW)
+        # set frame resizing priorities
+        self.frame.rowconfigure(0, weight=1)
+        self.frame.columnconfigure(0, weight=1)
+
+    def popup(self, event):
+        """
+        Act on right click
+        :param event:
+        :return: N/A
+        """
+
+        # select row under mouse
+        iid = self.ltree.identify_row(event.y)
+        self.itemid = iid
+        if iid:
+            # mouse pointer over item
+            self.ltree.selection_set(iid)
+            item = self.ltree.item(iid)
+            self.itemvalues = item['values']
+            self.itemtags = item['tags']
+            self.empopupmenu.tk_popup(event.x_root, event.y_root)
+
+    def edit_mfg(self):
+        """
+
+        :return: N/A
+        """
+        title = 'Edit Manufacturer: ' + self.itemvalues[0]
+        e = EditManufacturer(self.parent, values=self.itemvalues, db=self.db, title=title)
+
+        self.ltree.item(self.itemid, values=self.itemvalues)
 
 #
 # Class to show part list
 #
 
-class ShowParts:
+class ShowParts(DisplayFrame):
     def __init__(self, parent, db):
-        self.parent = parent
-        self.frame = None
-        self.db = db
+        DisplayFrame.__init__(self, parent, db)
         self.dsdir = general.get('datasheets', None)
         if self.dsdir is not None:
             self.dsdir = os.path.expanduser(self.dsdir)
@@ -622,9 +783,10 @@ class ShowParts:
         :return: N/A
         """
         self.like = like
-        if(self.frame is not None):
-            self.frame.destroy()
-        self.frame = Frame(self.parent)
+        if(DisplayFrame.frame is not None):
+            DisplayFrame.frame.destroy()
+        DisplayFrame.frame = Frame(self.parent)
+        self.frame = DisplayFrame.frame
         self.frame.pack(side=TOP, fill=BOTH, expand=Y)
         self.ltree = Treeview(height="26", columns=("Part Number","Description","Manufacturer","Manufacturer Part Number"), selectmode="extended")
         ysb = Scrollbar(orient='vertical', command=self.ltree.yview)
@@ -949,6 +1111,7 @@ if __name__ == '__main__':
     app=FullScreenApp(root)
 
     parts = ShowParts(root, DB)
+    manufacturers = ShowManufacturers(root, DB)
 
     menubar = Menu(root, tearoff = 0)
     filemenu = Menu(menubar, tearoff=0)
@@ -965,6 +1128,7 @@ if __name__ == '__main__':
     viewmenu = Menu(menubar, tearoff = 0)
     viewmenu.add_command(label="View All Parts", command=parts.refresh)
     viewmenu.add_command(label="View Parts Like...", command=viewPartsLike)
+    viewmenu.add_command(label="View Manufacturers", command=manufacturers.refresh)
     menubar.add_cascade(label="View", menu=viewmenu)
 
 
