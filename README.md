@@ -50,6 +50,8 @@ The output will look like this when imported into your spreadsheet:
 
 *bommgr.py*
 
+This is the CLI part manager tool.
+
 Part numbers are expected to be in 6-3 format (e.g. 800000-101). You use
 the manager script to add new part numbers like this:
 
@@ -116,11 +118,7 @@ output imported into a spreadsheet:
 *partmgr.py*
 
 This is a GUI part manager which displays parts in a list form
-for ease of use during part number population of the schematic. It allows part
-numbers and manufacturer part numbers to be pasted to the clipboard. It also allows
-new parts to be added, descriptions to be changed, and manufacturer part
-numbers to be changed. There is still quite a bit of functionality missing
-which will require the use of the command line tool in some cases.
+for ease of use during part number population of the schematic.
 
 * Part numbers and descriptions are presented in list form.
 
@@ -194,7 +192,7 @@ The following python3 files are required for bommerge-eagle.py
 *Notice*
 
 This is currently alpha software. There will most likely be bugs. This is not feature complete. There
-are several important commands missing. There is no facility to delete part numbers once they have been
+are several commands missing. There is no facility to delete part numbers once they have been
 assigned, and there probably never will be as that is dangerous. 
 
 Use at your own risk.
