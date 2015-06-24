@@ -16,6 +16,11 @@ and separate merger scripts for:
  
  * Kicad xml files written in Python 2.7.
  * Eagle 6 .csv files written in Python 3.0
+ 
+Here is a screenshot of the GUI Part Manager tool partmgr.py:
+
+![PartManager](PartmgrScreenshot.png)
+
 
 *bommerge.py and bommerge-eagle.py* 
 
