@@ -115,7 +115,7 @@ output imported into a spreadsheet:
 
 *partmgr.py*
 
-This is an experimental GUI part manager which displays parts in a list form
+This is a GUI part manager which displays parts in a list form
 for ease of use during part number population of the schematic. It allows part
 numbers and manufacturer part numbers to be pasted to the clipboard. It also allows
 new parts to be added, descriptions to be changed, and manufacturer part
@@ -132,6 +132,18 @@ which will require the use of the command line tool in some cases.
 
 * New part numbers may be added using the Edit menu.
 
+* To change a manufacturer name, choose 'View Manufacturers' from the View menu, then right click on
+the manufacturer name to edit.
+
+* You can associate a data sheet with a manufacturer's part number so that you can call up a datasheet
+by right clicking on the manufacturer part number row and picking file name of the datasheet an a 
+preconfigured datasheet directory. The pdf viewer path, and datasheet directory name need to be
+placed in the bommgr.conf configuration file for this feature to work. See the sample bommgr.conf
+file for details.
+
+* You can copy a part number or manufacturer's part number to the clipboard by right clinking on the
+row, them choosing the 'Copy part number to clipboard' or 'Copy manufacturer part number to clipboard'
+menu items from the popup menu.
 
 *Configuration File*
 
