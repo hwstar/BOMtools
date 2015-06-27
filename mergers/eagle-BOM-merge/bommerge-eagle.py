@@ -190,6 +190,18 @@ try:
 except configparser.NoSectionError:
     configdict={}
 
+try:
+    configdict['merge'] = dict(Config.items("merge"))
+except configparser.NoSectionError:
+    configdict['merge']={}
+
+# Get list of ignored reference designators if it exists
+ignoredrefs = []
+if 'ignorerefs' in configdict['merge']:
+    for ignoredref in configdict['merge']['ignorerefs'].replace(' ','').split(','):
+        ignoredrefs.append(ignoredref)
+
+
 # Decide which db path to use
 
 if args.specdb:
@@ -241,15 +253,24 @@ unmatched_items = []
 # Coalesce individual parts into groups
 
 for line_item in csv_reader:
+    # Filter out ignored reference designators
+    skip = False
+    for ignoredref in ignoredrefs:
+        if line_item['Part'].startswith(ignoredref):
+            skip = True
+    if skip == True:
+        continue
+
+    # Attempt part number lookup
     pn = line_item['PARTNUMBER']
     descr = getdescr(pn)
-    if line_item['PARTNUMBER'] == '' or descr == '':
+
+    if pn == '' or descr == '':
         unmatched_items.append({'Part Number': pn, 'Qty': 1, 'Reference(s)': line_item['Part'],
                                 'Value on Schematic': line_item['Value'], 'Manufacturer': unk,
                                 'Manufacturer Part Number': unk})
     else:
-        part_number = line_item['PARTNUMBER']
-        add_item(matched_items, part_number, line_item['Part'], line_item['Value'])
+        add_item(matched_items, pn, line_item['Part'], line_item['Value'])
 
 
 for i,item in enumerate(matched_items):
