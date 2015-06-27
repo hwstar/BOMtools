@@ -222,6 +222,19 @@ try:
 except ConfigParser.NoSectionError:
     configdict={}
 
+try:
+    configdict['merge'] = dict(Config.items("merge"))
+except ConfigParser.NoSectionError:
+    configdict['merge']={}
+
+# Get list of ignored reference designators if it exists
+ignoredrefs = []
+if 'ignorerefs' in configdict['merge']:
+    for ignoredref in configdict['merge']['ignorerefs'].replace(' ','').split(','):
+        ignoredrefs.append(ignoredref)
+
+
+
 # Decide which db path to use
 
 if args.specdb:
@@ -315,6 +328,15 @@ for group in grouped:
         if(i):
             refs += ','
         refs += rgroup
+
+
+    # Filter out ignored reference designators
+    skip = False
+    for ignoredref in ignoredrefs:
+        if plist[0].startswith(ignoredref):
+            skip = True
+    if skip == True:
+        continue
 
     # Fill in the component groups common data
 
