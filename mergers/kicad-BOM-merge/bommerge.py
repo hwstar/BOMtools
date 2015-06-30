@@ -214,6 +214,8 @@ parser.add_argument('infile',help='kicad xml input file')
 parser.add_argument('outfile',help='csv output file')
 parser.add_argument('--specdb',help='specify database file to use')
 parser.add_argument('--config',help='specify config file to use')
+parser.add_argument('--const',help='specify BOM construction keyword')
+
 
 
 # parse the args and die on error
@@ -319,6 +321,9 @@ for component in components:
     pn = component.getField('PartNumber')
     ref = component.getRef()
     value = component.getValue()
+    constkwds = component.getField('Construction').replace(' ','').split(',')
+    if constkwds[0] == '':
+        constkwds = []
     footprint= component.getFootprint()
 
     # Filter out ignored reference designators
@@ -328,6 +333,11 @@ for component in components:
             skip = True
     if skip == True:
         continue
+
+    # Filter by construction if --const option was passed on command line
+    if args.const is not None and len(constkwds):
+        if args.const not in constkwds:
+            continue
 
     if pn == '':
         unmatched_items.append({'Reference(s)': ref,
