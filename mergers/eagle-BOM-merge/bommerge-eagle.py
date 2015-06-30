@@ -169,7 +169,7 @@ parser.add_argument('infile',help='eagle csv input file with part numbers')
 parser.add_argument('outfile',help='csv output file')
 parser.add_argument('--specdb',help='specify database file to use')
 parser.add_argument('--config',help='specify config file to use')
-
+parser.add_argument('--const',help='specify BOM construction keyword')
 
 # parse the args and die on error
 args = parser.parse_args()
@@ -253,6 +253,14 @@ unmatched_items = []
 # Coalesce individual parts into groups
 
 for line_item in csv_reader:
+
+    try:
+        constkwds = line_item['CONSTRUCTION'].replace(' ','').split(',')
+    except KeyError:
+        constkwds = []
+    if len(constkwds) and constkwds[0] == '':
+        constkwds = []
+
     # Filter out ignored reference designators
     skip = False
     for ignoredref in ignoredrefs:
@@ -261,11 +269,23 @@ for line_item in csv_reader:
     if skip == True:
         continue
 
+
     # Attempt part number lookup
-    pn = line_item['PARTNUMBER']
+    try:
+        pn = line_item['PARTNUMBER']
+    except KeyError:
+        pn = unkPn
+
+    # Filter by construction if --const option was passed on command line
+    if args.const is not None and len(constkwds):
+        print(pn, args.const, constkwds)
+        if args.const not in constkwds:
+            print('skip')
+            continue
+
     descr = getdescr(pn)
 
-    if pn == '' or descr == '':
+    if pn == unkPn or descr == '':
         unmatched_items.append({'Part Number': pn, 'Qty': 1, 'Reference(s)': line_item['Part'],
                                 'Value on Schematic': line_item['Value'], 'Manufacturer': unk,
                                 'Manufacturer Part Number': unk})
