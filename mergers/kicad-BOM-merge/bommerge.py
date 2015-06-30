@@ -181,6 +181,19 @@ def pack_ref_designators(inplist):
 
     return outlist
 
+# Add item to grouped_items
+
+def add_item(grouped_items, part_number, reference, value):
+    if(len(grouped_items) > 0):
+        for item in grouped_items:
+            if item['Part Number'] == part_number:
+                # Found match to existing item
+                item['Reference(s)'].append(reference)
+                item['Value On Schematic'] = value
+                return
+    # New item in existing list, or
+    # First item
+    grouped_items.append({'Part Number': part_number, 'Reference(s)': [reference], 'Value On Schematic': value})
 
 
 
@@ -296,57 +309,58 @@ out = csv.writer( f, lineterminator='\n', delimiter=',', quotechar='\"', quoting
 
 row = []
 writerow( out, columns )                   # column header
-
+matched_items = []
+unmatched_items = []
 
 # Get all of the components in groups of matching parts + values
 # (see kicad_netlist_reader.py)
-grouped = net.groupComponents(components)
+
+for component in components:
+    pn = component.getField('PartNumber')
+    ref = component.getRef()
+    value = component.getValue()
+    footprint= component.getFootprint()
+
+    # Filter out ignored reference designators
+    skip = False
+    for ignoredref in ignoredrefs:
+        if ref.startswith(ignoredref):
+            skip = True
+    if skip == True:
+        continue
+
+    if pn == '':
+        unmatched_items.append({'Reference(s)': ref,
+                                'Value on Schematic': value})
+    else:
+        add_item(matched_items, pn, ref, value)
 
 
 # Output component information organized by group, aka as collated:
 item = 0
-for group in grouped:
+for match in matched_items:
     del row[:]
-    refs = ""
 
     # Add the reference of every component in the group and keep a reference
     # to the component so that the other data can be filled in once per group
 
-
-    grplist = []
-
-    for component in group:
-        if len(refs) > 0:
-            refs += ", "
-        grplist.append(component.getRef())
-        refs += component.getRef()
-        c = component
+    grplist = match['Reference(s)']
 
     plist = pack_ref_designators(grplist)
-    refs = ""
+    refs = ''
     for i, rgroup in enumerate(plist):
         if(i):
             refs += ','
         refs += rgroup
 
 
-    # Filter out ignored reference designators
-    skip = False
-    for ignoredref in ignoredrefs:
-        if plist[0].startswith(ignoredref):
-            skip = True
-    if skip == True:
-        continue
-
     # Fill in the component groups common data
 
     item += 1
     row.append( item ) # Item number
-    pn = c.getField('PartNumber')
-    if(pn==''):
-        pn = unkPn
+    pn = match['Part Number']
     row.append(pn) # Part number
-    row.append( len(group) ) # Quantity
+    row.append( len(grplist) ) # Quantity
     row.append(refs) # Reference Designators
 
     # Attempt part number lookup
@@ -361,11 +375,11 @@ for group in grouped:
         descr = getdescr(pn)
         if(descr != unk):
             # Try to get manufacturer info from database
-            # This can return muliple entries
+            # This can return multiple entries
             mfginfo = getmfginfo(pn)
 
     row.append(descr)   # Descr
-    row.append( c.getValue() )
+    row.append(match['Value On Schematic'] )
     row.append(mfginfo[0]['MFG'])
     row.append(mfginfo[0]['MPN'])
     writerow( out, row  )
@@ -385,6 +399,21 @@ for group in grouped:
         row.append(altsrc['MFG'])
         row.append(altsrc['MPN'])
         writerow(out, row)
+
+# Append unmatched items to end of csv file as Kicad does not print script output
+
+for unmatched_item in  unmatched_items:
+    del row[:]
+    item += 1
+    row.append( item ) # Item number
+    row.append(unkPn) # Part number
+    row.append('1') # Quantity
+    row.append(unmatched_item['Reference(s)']) #Reference
+    row.append(unk) # Description
+    row.append(unmatched_item['Value on Schematic'])
+    writerow(out, row)
+
+
 
 f.close()
 
