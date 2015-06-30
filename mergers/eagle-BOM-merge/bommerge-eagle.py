@@ -272,16 +272,17 @@ for line_item in csv_reader:
     else:
         add_item(matched_items, pn, line_item['Part'], line_item['Value'])
 
-
+lastindex = 1
 for i,item in enumerate(matched_items):
     mfginfo = getmfginfo(item['Part Number'])
-    item['Item'] = i + 1
+    lastindex = i + 1
+    item['Item'] = lastindex
     item['Qty'] = len(item['Reference(s)'])
     item['Reference(s)'] = pack_ref_designators(item['Reference(s)'])
     # Create string from list of references
     refs = ""
-    for i, rgroup in enumerate(item['Reference(s)']):
-        if(i):
+    for j, rgroup in enumerate(item['Reference(s)']):
+        if(j):
             refs += ','
         refs += rgroup
     # Convert to string
@@ -317,16 +318,20 @@ for i,item in enumerate(matched_items):
         row.append(mfginfo[alt_source_index]['Manufacturer Part Number'])
         alt_source_index += 1
 
-if len(unmatched_items):
-    print()
-    print('Warning: The following are not in the parts database:')
-    print()
-    for item in unmatched_items:
-        print(item['Reference(s)'])
-else:
-    print("Info: All items matched to database")
 
 
+# Append unmatched items to end of csv file
+
+for unmatched_item in  unmatched_items:
+    del row[:]
+    lastindex += 1
+    row.append( lastindex ) # Item number
+    row.append(unkPn) # Part number
+    row.append('1') # Quantity
+    row.append(unmatched_item['Reference(s)']) #Reference
+    row.append(unk) # Title/Description
+    row.append(unmatched_item['Value on Schematic'])
+    writerow(out, row)
 
 
 
