@@ -199,7 +199,7 @@ class ErrorPopUp(Dialog):
         Label(master, text=self.message).pack(anchor=W)
 
 #
-# Search Select Dialog Box
+# Part Search Select Dialog Box
 #
 
 class ViewPartsDialog(Dialog):
@@ -232,6 +232,46 @@ class ViewPartsDialog(Dialog):
 
     def get_selected(self):
         return self.selected
+#
+# MPN Search Select Dialog Box
+#
+
+class ViewMPNsDialog(Dialog):
+    mpn_search_items = []
+
+    def __init__(self, parent, title = "View MPN's Like", xoffset=50, yoffset=50):
+        if title is None:
+            raise SystemError
+        Dialog.__init__(self, parent, title, xoffset, yoffset)
+
+    def body(self, master):
+        """
+        Present combo box of search items
+        """
+        patframe=Frame(master)
+        Label(patframe, text='Search Pattern').grid(row=0, column=0, sticky=W)
+        self.search_entry = Combobox(patframe, width=50, values=ViewMPNsDialog.mpn_search_items)
+        self.search_entry.grid(row=0, column=1, sticky=W)
+        patframe.pack()
+        helpframe=Frame(master)
+        Label(helpframe, text='Use % as a wildcard character').pack()
+        helpframe.pack()
+
+    def validate(self):
+        return True
+
+    def apply(self):
+        self.selected = self.search_entry.get()
+        if self.selected not in ViewMPNsDialog.mpn_search_items:
+            ViewMPNsDialog.mpn_search_items.append(self.selected)
+
+    def get_selected(self):
+        print(self.selected)
+        return self.selected
+
+
+
+
 #
 # Edit Description dialog box
 #
@@ -775,11 +815,44 @@ class ShowParts(DisplayFrame):
 
         self.mpnpopupmenu.add_command(label="Remove this source", command=self.remove_source, state=DISABLED)
 
+    def refresh_mpn_processor(self, like):
+        """
+        Process refresh items  (default)
+        :param like: - search string
+        :return: N/A
+        """
+        parts = self.db.lookup_mpn_like(like)
+
+        for row,(pn,mpn) in enumerate(parts):
+            res = self.db.lookup_pn(pn)
+            desc = res[1]
+            parent_iid = self.ltree.insert("", "end", "", tag=[pn,'partrec'], values=((pn, desc, '', '')))
+            self.populate_source_list(pn, parent_iid)
+            children = self.ltree.get_children(parent_iid)
+            for child in children:
+                self.ltree.see(child)
 
 
-    def refresh(self, like=None):
+    def refresh_default_processor(self, like):
+        """
+        Process refresh items  (default)
+        :param like: - search string
+        :return: N/A
+        """
+        parts = self.db.get_parts(like)
+
+        for row,(pn,desc) in enumerate(parts):
+            mfg = defaultMfgr
+            mpn = defaultMpn
+            parent_iid = self.ltree.insert("", "end", "", tag=[pn,'partrec'], values=((pn, desc, '', '')))
+            self.populate_source_list(pn, parent_iid)
+
+
+    def refresh(self, like=None, processor='DEFAULT'):
         """
         Refresh screen with current list entries
+        :param: like - match string
+        :param: callback - processing function. Use default if set to None
         :return: N/A
         """
         self.like = like
@@ -804,14 +877,12 @@ class ShowParts(DisplayFrame):
         self.ltree.column('#0', stretch=NO, minwidth=0, width=0) #width 0 for special heading
         self.ltree.bind("<Button-3>", self.popup)
 
-        parts = self.db.get_parts(like)
 
-        for row,(pn,desc) in enumerate(parts):
-            mfg = defaultMfgr
-            mpn = defaultMpn
-            parent_iid = self.ltree.insert("", "end", "", tag=[pn,'partrec'], values=((pn, desc, '', '')))
-
-            self.populate_source_list(pn, parent_iid)
+        # Process items to view on screen
+        if processor == 'DEFAULT':
+            self.refresh_default_processor(like)
+        elif processor == 'MPN':
+            self.refresh_mpn_processor(like)
 
         # add tree and scrollbars to frame
         self.ltree.grid(in_=self.frame, row=0, column=0, sticky=NSEW)
@@ -1019,6 +1090,7 @@ class ShowParts(DisplayFrame):
 
             self.db.update_datasheet(pn, mid, mpn, path)
 
+
 #
 # Return the next free manufacturer ID
 #
@@ -1046,7 +1118,11 @@ def viewPartsLike():
     selected=res.get_selected()
     parts.refresh(selected)
 
+def viewMPNsLike():
+    res = ViewMPNsDialog(root)
+    selected = res.get_selected()
 
+    parts.refresh(selected,'MPN')
 #
 #
 #
@@ -1128,6 +1204,7 @@ if __name__ == '__main__':
     viewmenu = Menu(menubar, tearoff = 0)
     viewmenu.add_command(label="View All Parts", command=parts.refresh)
     viewmenu.add_command(label="View Parts Like...", command=viewPartsLike)
+    viewmenu.add_command(label="View View Manufacturer Part Numbers Like...", command=viewMPNsLike)
     viewmenu.add_command(label="View Manufacturers", command=manufacturers.refresh)
     menubar.add_cascade(label="View", menu=viewmenu)
 

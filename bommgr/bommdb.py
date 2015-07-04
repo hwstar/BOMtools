@@ -138,6 +138,20 @@ class BOMdb:
 
         return (pn, mname, mpn, mid)
 
+
+    def lookup_mpn_like(self, mpn):
+        """
+        Look up a manufacturer part number similar to the argument
+        Warning: Use this method to see if an mpn exists anywhere queries only.
+        Use lookup_part_by_pn_mpn when changing a manufacturer part record.
+        :param mpn: a manufacturer part number
+        :return: a list of tuples containing: part number, manufacturer part number. Empty list returned if no match
+        """
+
+        self.cur.execute('SELECT PartNumber,MPN FROM pnmpn WHERE MPN LIKE ?', [mpn])
+        res = self.cur.fetchall()
+        return res
+
     def lookup_part_by_pn_mpn(self, pn, mpn):
         """
         Look up a manufacturer part record by part number and manufacturer part number
