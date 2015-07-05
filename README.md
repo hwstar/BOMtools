@@ -171,22 +171,13 @@ with the following command:
 
 `python3 setup.py install --home ~`
 
-The merger scripts do not have an installer associated with them.
+For the Kicad BOM merge script:
 
-The following python2.7 modules are required for bommerge.py:
+`python setup.py install --home ~`
 
-* kicad_netlist_reader
-* csv
-* sqlite3
-* argparse
-* ConfigParser
+For the Eagle BOM merge script:
 
-The following python3 files are required for bommerge-eagle.py
-
-* argparse
-* configparser
-* csv
-* sqlite3
+`python3 setup.py install --home ~`
 
 
 *Notice*
