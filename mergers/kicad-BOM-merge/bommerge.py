@@ -38,7 +38,6 @@ __author__ = 'srodgers'
 
 
 # Import the KiCad python helper, csv formatter, and sqlite3 modules
-import string
 import kicad_netlist_reader
 import csv
 import sys

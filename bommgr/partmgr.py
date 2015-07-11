@@ -980,7 +980,7 @@ class ShowParts(DisplayFrame):
         Display Dialog box and allow user to edit the manufacturer part number
         :return: N/A
         """
-        title = 'Edit Manufacturer Part Number: ' + self.itemvalues[3]
+        title = 'Edit Manufacturer Part Number: ' + str(self.itemvalues[3])
         e = EditMPN(self.parent, values=self.itemvalues, tags=self.itemtags, db=self.db, title=title)
 
         self.ltree.item(self.itemid, values=self.itemvalues)
