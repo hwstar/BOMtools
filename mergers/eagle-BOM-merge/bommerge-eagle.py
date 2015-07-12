@@ -201,6 +201,16 @@ if 'ignorerefs' in configdict['merge']:
     for ignoredref in configdict['merge']['ignorerefs'].replace(' ','').split(','):
         ignoredrefs.append(ignoredref)
 
+# If there are part numbers and references to add which are not in the schematic BOM,
+# parse these here
+
+addparts = {}
+if 'addparts' in configdict['merge']:
+    aplist=configdict['merge']['addparts'].replace(' ','').split(';')
+    for apitem in aplist:
+        [k,v] = apitem.split(':')
+        refs = v.split(',')
+        addparts[k] = sorted(refs)
 
 # Decide which db path to use
 
@@ -278,9 +288,9 @@ for line_item in csv_reader:
 
     # Filter by construction if --const option was passed on command line
     if args.const is not None and len(constkwds):
-        print(pn, args.const, constkwds)
+        #print(pn, args.const, constkwds)
         if args.const not in constkwds:
-            print('skip')
+            #print('skip')
             continue
 
     descr = getdescr(pn)
@@ -291,6 +301,14 @@ for line_item in csv_reader:
                                 'Manufacturer Part Number': unk})
     else:
         add_item(matched_items, pn, line_item['Part'], line_item['Value'])
+
+if addparts is not {}:
+    for part in addparts:
+        for ref in addparts[part]:
+            add_item(matched_items, part, ref, '')
+    # We have to re-sort the entire BOM, as the added parts are appended to the end
+    matched_items = sorted(matched_items,key=lambda item: item['Reference(s)'][0])
+
 
 lastindex = 1
 for i,item in enumerate(matched_items):

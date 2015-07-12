@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 """
     This file is part of BOMtools.
@@ -214,18 +214,27 @@ parser.add_argument('outfile',help='csv output file')
 parser.add_argument('--specdb',help='specify database file to use')
 parser.add_argument('--config',help='specify config file to use')
 parser.add_argument('--const',help='specify BOM construction keyword')
-
-
+parser.add_argument('--usecwd',action='store_true', help='Use current working directory for local config file instead of path to input file')
 
 # parse the args and die on error
 args = parser.parse_args()
+
+# get the path to the directory with the project files
+[ph,pt] = os.path.split(args.infile)
+
 
 
 if(args.config is not None):
     configLocation = os.path.expanduser(args.config)
 else:
+    # If --usecwd is not specified,
+    # add path for input file to local config file.
+    # Kicad passes in full paths from a different working dir.
+    # and we need to see if there is a
+    # local config file to read.
+    if args.usecwd is False:
+        defaultConfigLocations[2] = ph + os.path.sep + defaultConfigLocations[2]
     configLocation = defaultConfigLocations
-
 
 # Attempt to read the config file
 
@@ -247,6 +256,16 @@ if 'ignorerefs' in configdict['merge']:
     for ignoredref in configdict['merge']['ignorerefs'].replace(' ','').split(','):
         ignoredrefs.append(ignoredref)
 
+# If there are part numbers and references to add which are not in the schematic BOM,
+# parse these here
+
+addparts = {}
+if 'addparts' in configdict['merge']:
+    aplist=configdict['merge']['addparts'].replace(' ','').split(';')
+    for apitem in aplist:
+        [k,v] = apitem.split(':')
+        refs = v.split(',')
+        addparts[k] = sorted(refs)
 
 
 # Decide which db path to use
@@ -344,6 +363,12 @@ for component in components:
     else:
         add_item(matched_items, pn, ref, value)
 
+if addparts is not {}:
+    for part in addparts:
+        for ref in addparts[part]:
+            add_item(matched_items, part, ref, '')
+    # We have to re-sort the entire BOM, as the added parts are appended to the end
+    matched_items = sorted(matched_items,key=lambda item: item['Reference(s)'][0])
 
 # Output component information organized by group, aka as collated:
 item = 0
