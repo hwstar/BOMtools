@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """
     This file is part of BOMtools.
@@ -43,7 +43,7 @@ import csv
 import sys
 import os
 import sqlite3
-import ConfigParser
+import configparser
 import argparse
 
 defaultConfigLocations = ['/etc/bommgr/bommgr.conf','~/.bommgr/bommgr.conf','bommgr.conf']
@@ -91,7 +91,7 @@ def getdescr(pn):
     res = cur.fetchone()
 
     if(res is not None):
-        return res[0].decode('utf-8')
+        return res[0]
     else:
         return unk
 
@@ -238,16 +238,16 @@ else:
 
 # Attempt to read the config file
 
-Config = ConfigParser.ConfigParser()
+Config = configparser.ConfigParser()
 Config.read(configLocation)
 try:
     configdict = dict(Config.items("general"))
-except ConfigParser.NoSectionError:
+except configparser.NoSectionError:
     configdict={}
 
 try:
     configdict['merge'] = dict(Config.items("merge"))
-except ConfigParser.NoSectionError:
+except configparser.NoSectionError:
     configdict['merge']={}
 
 # Get list of ignored reference designators if it exists
