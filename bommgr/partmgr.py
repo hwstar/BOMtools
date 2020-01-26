@@ -744,7 +744,7 @@ class ShowManufacturers(DisplayFrame):
 
         manufacturers = self.db.get_mfgrs()
         for manuf in manufacturers:
-            parent_iid = self.ltree.insert("", "end", "", tag=[manuf,'mfgrec'], values=(manuf[0],))
+            parent_iid = self.ltree.insert("", "end", tag=[manuf,'mfgrec'], values=(manuf[0],))
 
         # add tree and scrollbars to frame
         self.ltree.grid(in_=self.frame, row=0, column=0, sticky=NSEW)
@@ -826,7 +826,7 @@ class ShowParts(DisplayFrame):
         for row,(pn,mpn) in enumerate(parts):
             res = self.db.lookup_pn(pn)
             desc = res[1]
-            parent_iid = self.ltree.insert("", "end", "", tag=[pn,'partrec'], values=((pn, desc, '', '')))
+            parent_iid = self.ltree.insert("", "end", tag=[pn,'partrec'], values=((pn, desc, '', '')))
             self.populate_source_list(pn, parent_iid)
             children = self.ltree.get_children(parent_iid)
             for child in children:
@@ -844,7 +844,7 @@ class ShowParts(DisplayFrame):
         for row,(pn,desc) in enumerate(parts):
             mfg = defaultMfgr
             mpn = defaultMpn
-            parent_iid = self.ltree.insert("", "end", "", tag=[pn,'partrec'], values=((pn, desc, '', '')))
+            parent_iid = self.ltree.insert("", "end",  tag=[pn,'partrec'], values=((pn, desc, '', '')))
             self.populate_source_list(pn, parent_iid)
 
 
@@ -1014,7 +1014,7 @@ class ShowParts(DisplayFrame):
         for item in res:
             mfg = item['mname']
             mpn = item['mpn']
-            self.ltree.insert(itemid, "end", "", tag=[pn,'mfgpartrec'], values=(('', '', mfg, mpn)))
+            self.ltree.insert(itemid, "end", tag=[pn,'mfgpartrec'], values=(('', '', mfg, mpn)))
 
     def rebuild_source_list(self, pn, itemid):
         """
