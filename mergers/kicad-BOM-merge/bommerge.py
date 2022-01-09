@@ -413,7 +413,7 @@ for i in range(0, len(defaultConfigLocations)):
 parser = argparse.ArgumentParser(description = 'BOM merger for kicad', prog = 'bommerge.py')
 parser.add_argument('infile',help='kicad xml input file')
 parser.add_argument('outfile',help='csv output file')
-parser.add_argument('--add_dni_parts',action='store_true', help='Add DNI parts to composite BOM')
+parser.add_argument('--add-dni-parts',action='store_true', help='Add DNI parts to composite BOM')
 parser.add_argument('--specdb',help='specify database file to use')
 parser.add_argument('--config',help='specify config file to use')
 parser.add_argument('--const',help='specify BOM construction keyword')
@@ -479,7 +479,6 @@ if args.split_bom is not None:
         for row in split_bom_reader:
             split_bom_dict[row['Ref']] = row['Side']
 
-print(split_bom_dict)
 
 infile = args.infile
 outfile = args.outfile
