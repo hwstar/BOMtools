@@ -306,6 +306,10 @@ def bom_generate(outfile, matched_items, dni_list=None):
 
         # Fill in the component groups common data
 
+        if 'Part Number' not in match:
+            print("Warning: no part number assigned for references {} ".format(grplist))
+            continue
+
         item += 1
         row.append(item)  # Item number
         pn = match['Part Number']
