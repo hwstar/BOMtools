@@ -273,6 +273,11 @@ def bom_make_dicts(components, split_bom_dict, const_flag=False,  side='',dni_fl
 #
 
 def bom_generate(outfile, matched_items, dni_list=None):
+    def altsrc_flag_check(str):
+        if fill_altsrc_fields is True:
+            return str
+        else:
+            return ''
     try:
         f = open(outfile, 'w')
     except IOError:
@@ -338,7 +343,11 @@ def bom_generate(outfile, matched_items, dni_list=None):
         row.append(match['Value On Schematic'])
         row.append(mfginfo[0]['MFG'])
         row.append(mfginfo[0]['MPN'])
-        row.append(match['Footprint'].split(":")[1])
+        if ':' in match['Footprint']:
+            footprint = match['Footprint'].split(":")[1]
+        else:
+            footprint = match['Footprint']
+        row.append(footprint)
         writerow(out, row)
 
         mfginfo.pop(0)
@@ -350,12 +359,15 @@ def bom_generate(outfile, matched_items, dni_list=None):
             row.append(item)  # Repeat Item
             row.append(pn)  # Part number
             row.append(len(grplist))  # Quantity
-            row.append(refs)  # refs
-            row.append(descr)  # descr
-            row.append(match['Value On Schematic'])  # Schematic value
+
+            row.append(altsrc_flag_check(refs))  # refs
+
+
+            row.append(altsrc_flag_check(descr))  # descr
+            row.append(altsrc_flag_check(match['Value On Schematic']))  # Schematic value
             row.append(altsrc['MFG'])
             row.append(altsrc['MPN'])
-            row.append(match['Footprint'].split(":")[1])  # Footprint
+            row.append(altsrc_flag_check(footprint))  # Footprint
             writerow(out, row)
     if dni_list is not None:
             del row[:]
@@ -428,6 +440,7 @@ parser.add_argument('--config',help='specify config file to use')
 parser.add_argument('--const',help='specify BOM construction keyword')
 parser.add_argument('--split-bom',help='split BOM into top, bottom, and PTH sections. PCB X/Y csv file name must be supplied')
 parser.add_argument('--usecwd',action='store_true', help='Use current working directory for local config file instead of path to input file')
+parser.add_argument('--fill-altsrc-fields', action='store_true', default=False, help='Fill out the alternate source fields')
 
 # parse the args and die on error
 args = parser.parse_args()
@@ -488,7 +501,7 @@ if args.split_bom is not None:
         for row in split_bom_reader:
             split_bom_dict[row['Ref']] = row['Side']
 
-
+fill_altsrc_fields = args.fill_altsrc_fields
 infile = args.infile
 outfile = args.outfile
 
