@@ -183,7 +183,7 @@ def pack_ref_designators(inplist):
 
 # Add item to grouped_items
 
-def add_item(grouped_items, part_number, reference, value):
+def add_item(grouped_items, part_number, reference, value, footprint):
     if(len(grouped_items) > 0):
         for item in grouped_items:
             if item['Part Number'] == part_number:
@@ -193,7 +193,8 @@ def add_item(grouped_items, part_number, reference, value):
                 return
     # New item in existing list, or
     # First item
-    grouped_items.append({'Part Number': part_number, 'Reference(s)': [reference], 'Value On Schematic': value})
+    grouped_items.append({'Part Number': part_number, 'Reference(s)': [reference],
+                          'Value On Schematic': value, 'Footprint': footprint})
 
 
 #
@@ -217,6 +218,7 @@ def bom_make_dicts(components, split_bom_dict, const_flag=False,  side='',dni_fl
         pn = component.getField('PartNumber')
         ref = component.getRef()
         value = component.getValue()
+        footprint = component.getFootprint()
         constkwds = component.getField('Construction').replace(' ', '').split(',')
         if constkwds[0] == '':
             constkwds = []
@@ -254,10 +256,10 @@ def bom_make_dicts(components, split_bom_dict, const_flag=False,  side='',dni_fl
                     add_item(not_in_xy_items, pn, ref, value)
                     print("Warning: reference {} not in X-Y file, (probably PTH)".format(ref))
                 if comp_side == side:
-                    add_item(matched_items, pn, ref, value)
+                    add_item(matched_items, pn, ref, value, footprint)
             else:
                 # Case for composite BOM
-                add_item(matched_items, pn, ref, value)
+                add_item(matched_items, pn, ref, value, footprint)
 
     matched = sorted(matched_items, key=lambda item: item['Reference(s)'][0])
     unmatched = sorted(unmatched_items, key=lambda item: item['Reference(s)'][0])
@@ -279,7 +281,7 @@ def bom_generate(outfile, matched_items, dni_list=None):
 
     # prepend an initial 'hard coded' list and put the whole thing into a list 'columns'
     columns = ['Item', 'Part Number', 'Qty', 'Reference(s)', 'Title/Description', 'Value on Schematic', 'Manufacturer',
-               'Manufacturer Part Number']
+               'Manufacturer Part Number', 'Footprint']
 
     # Create a new csv writer object to use as the output formatter
     out = csv.writer(f, lineterminator='\n', delimiter=',', quotechar='\"', quoting=csv.QUOTE_MINIMAL)
@@ -336,6 +338,7 @@ def bom_generate(outfile, matched_items, dni_list=None):
         row.append(match['Value On Schematic'])
         row.append(mfginfo[0]['MFG'])
         row.append(mfginfo[0]['MPN'])
+        row.append(match['Footprint'].split(":")[1])
         writerow(out, row)
 
         mfginfo.pop(0)
@@ -345,13 +348,14 @@ def bom_generate(outfile, matched_items, dni_list=None):
         for altsrc in mfginfo:
             del row[:]
             row.append(item)  # Repeat Item
-            row.append('')  # Blank part number
-            row.append('')  # Blank quantity
-            row.append('')  # Blank refs
-            row.append('')  # Blank descr
-            row.append('')  # Schematic value
+            row.append(pn)  # Part number
+            row.append(len(grplist))  # Quantity
+            row.append(refs)  # refs
+            row.append(descr)  # descr
+            row.append(match['Value On Schematic'])  # Schematic value
             row.append(altsrc['MFG'])
             row.append(altsrc['MPN'])
+            row.append(match['Footprint'].split(":")[1])  # Footprint
             writerow(out, row)
     if dni_list is not None:
             del row[:]
@@ -364,8 +368,9 @@ def bom_generate(outfile, matched_items, dni_list=None):
             row.append(ref_des_string)  # Reference Designators
             row.append('DNI')  # Description
             row.append('DNI')  # Schematic value
-            row.append('DNI')
-            row.append('DNI')
+            row.append('DNI')  # MFG
+            row.append('DNI')  # MPN
+            row.append('DNI')  # Footprint
             writerow(out, row)
 
 
