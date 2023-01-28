@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 #
 # Convert csv output from bommerge.py into the format that JLCPCB wants to see.
 # This program looks at the BOM line-by-line and copies the rows where the
