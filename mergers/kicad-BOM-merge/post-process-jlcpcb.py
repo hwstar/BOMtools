@@ -17,7 +17,67 @@
 import sys
 import csv
 import argparse
-import pprint
+import re
+
+#
+# Choose the first LCSC part in a comma separated list of LCSC part numbers.
+# JLCPCB assembly throws out the part if there are commas in the part number.
+# Components with commas in the input BOM will typically have the fist part number as a basic component.
+#
+
+def choose_first_lcsc_part_number(part_number_str):
+    if "," in part_number_str:
+        lcsc_pn = part_number_str.split(",")[0]
+    else:
+        lcsc_pn = part_number_str
+    return lcsc_pn
+
+
+
+#
+# Expand a reference designator list with dashes to a list containing only commas
+#
+def expand_reference_designators(input_string):
+    expanded_list = list()
+
+    if "-" not in input_string:
+        return input_string
+
+
+    raw_item_list = input_string.split(",")
+
+
+
+    for refdes in raw_item_list:
+        if "-" in refdes:
+            startstop_refdes = refdes.split('-')
+            start_refdes = startstop_refdes[0]
+            stop_refdes = startstop_refdes[1]
+
+
+
+            ms = re.match(r"([a-z]+)([0-9]+)", start_refdes, re.I)
+            if ms:
+                msps = ms.groups()
+            else:
+                raise(ValueError("Malformed starting reference designator"))
+            me = re.match(r"([a-z]+)([0-9]+)", stop_refdes, re.I)
+            if me:
+                meps = me.groups()
+            else:
+                raise(ValueError("Malformed ending reference designator"))
+
+            if msps[0] != meps[0]:
+                raise(ValueError("Starting and ending references designator prefixes don't match"))
+
+
+            for i in range(int(msps[1]), int(meps[1]) + 1):
+                expanded_list.append(msps[0] + str(i))
+        else:
+            expanded_list.append(refdes)
+
+    expanded_str = ','.join(expanded_list)
+    return expanded_str
 
 
 parser = argparse.ArgumentParser(description = 'BOM post processor for JLCPCB assembly services', prog = 'post-process-jlcpcb.py')
@@ -70,7 +130,11 @@ if lcsc_count != last_item:
 
 for row in input_list:
     if row['Manufacturer'] == "LCSC":
-        output_data.append({"Comment": row["Title/Description"], "Designator": row["Reference(s)"], "Footprint": row["Footprint"], "JLCPCB Part #": row["Manufacturer Part Number"]})
+        refdes_expanded = expand_reference_designators(row["Reference(s)"])
+        output_data.append({"Comment": row["Title/Description"],
+                            "Designator": refdes_expanded,
+                            "Footprint": row["Footprint"],
+                            "JLCPCB Part #": choose_first_lcsc_part_number(row["Manufacturer Part Number"])})
 #
 # Generate the output file
 #
