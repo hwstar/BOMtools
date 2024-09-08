@@ -9,7 +9,7 @@ import subprocess
 pcb_assembly_house = ""
 project_name = ""
 project_revision = "Rev_X1"
-bin_directory = "/home/srodgers/bin"
+tool_directory = "/home/srodgers/bin"
 
 bom_raw_csv="bom_raw.csv"
 bom_composite_csv = "bom-composite.csv"
@@ -79,24 +79,24 @@ else:
 # Get config file settings
 
 # Optional
-if(not config["general"]["revision"]):
+if not config.has_option("general", "revision"):
 	print("Using default project revision: {}".format(project_revision))
 else:
 	project_revision = config["general"]["revision"]
 
-if(not config["general"]["bin_directory"]):
-	print("Using default bin directoy of: {}".format(bin_directory))
+if not config.has_option("general", "tool_directory"):
+	print("Using default tool directory of: {}".format(tool_directory))
 else:
-	bin_directory = config["general"]["bin_directory"]
+	tool_directory = config["general"]["tool_directory"]
 
 # Mandatory
 	
-if(not config["general"]["project_name"]):
+if not config.has_option("general", "project_name"):
 	sys.exit("Missing project_name in config file")
 else:
 	project_name = config["general"]["project_name"]
 
-if(not config["general"]["fab_assembly_house"]):
+if not config.has_option("general","fab_assembly_house") :
 	sys.exit("Missing fab_assembly_house in config file")
 else:
 	pcb_assembly_house = config["general"]["fab_assembly_house"]
@@ -105,11 +105,11 @@ else:
 # Create the paths to the bomtool utilities
 
 if args.tool_directory:
-	bin_directory = args.tool_directory
+	tool_directory	= args.tool_directory
 
-bommerge2_tool = bin_directory + "/" + "bommerge2.py"
-assy_bom_tool = bin_directory + "/" + "post-process-jlcpcb.py"
-x_y_file_tool = bin_directory + "/" + "jlcpcb-cpl-file.py"
+bommerge2_tool = tool_directory + "/" + "bommerge2.py"
+assy_bom_tool = tool_directory + "/" + "post-process-jlcpcb.py"
+x_y_file_tool = tool_directory + "/" + "jlcpcb-cpl-file.py"
 
 # Create the path to the gerber directory
 
