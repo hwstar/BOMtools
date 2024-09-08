@@ -108,22 +108,46 @@ with open(infile, newline='') as csvfile:
         input_list.append(row)
 
 #
-# Check consistency. Ensure that there is a JLC part number field
+# Check consistency. Ensure that there is a LCSC part number field
 # for each item in input_csv_contents
 #
 
-lcsc_count = 0
-last_item = 0
+
+# Group alternate sources
+
+current_item = -1
+lcsc_found = False
+mfg_list = []
+alternate_sources = []
 
 for item in input_list:
-    # Count an item with an LCSC part number
-    if item["Manufacturer"] == "LCSC":
-        lcsc_count = lcsc_count + 1
-    # Remember the last item processed so that we can compare with the number of LCSC sources we found in the BOM
-    last_item = int(item["Item"])
+    new_item_number = int(item["Item"])
+    if new_item_number != current_item:
+        if current_item != -1:
+            mfg_list.append(alternate_sources)
+            alternate_sources = []
+        current_item = new_item_number
+    alternate_sources.append(item)
 
-if lcsc_count != last_item:
-    print("Warning: {} items missing LCSC alternate sources!".format(last_item - lcsc_count))
+mfg_list.append(alternate_sources)
+
+# Check alternate sources for presence of LCSC manufacturer
+
+missing_lcsc_part_numbers = False
+for item in mfg_list:
+    found = False
+    for alt_source_index in range(0, len(item)):
+        if ((item[alt_source_index]["Manufacturer"] == "LCSC" and
+             item[alt_source_index]["Manufacturer Part Number"].startswith("C"))
+                or int(item[alt_source_index]['Qty']) == 0):
+            found = True
+    if not found:
+        missing_lcsc_part_numbers = True
+        print("Error: No LCSC part number found for item: {}, part number {}".format(int(item[0]["Item"]), item[0]["Part Number"]))
+
+if missing_lcsc_part_numbers:
+    sys.exit("Exiting due to missing LCSC part numbers")
+
 #
 # Convert to JLCPCB format
 #
