@@ -19,6 +19,7 @@ import csv
 import argparse
 import re
 
+
 #
 # Choose the first LCSC part in a comma separated list of LCSC part numbers.
 # JLCPCB assembly throws out the part if there are commas in the part number.
@@ -33,7 +34,6 @@ def choose_first_lcsc_part_number(part_number_str):
     return lcsc_pn
 
 
-
 #
 # Expand a reference designator list with dashes to a list containing only commas
 #
@@ -43,10 +43,7 @@ def expand_reference_designators(input_string):
     if "-" not in input_string:
         return input_string
 
-
     raw_item_list = input_string.split(",")
-
-
 
     for refdes in raw_item_list:
         if "-" in refdes:
@@ -54,22 +51,19 @@ def expand_reference_designators(input_string):
             start_refdes = startstop_refdes[0]
             stop_refdes = startstop_refdes[1]
 
-
-
             ms = re.match(r"([a-z]+)([0-9]+)", start_refdes, re.I)
             if ms:
                 msps = ms.groups()
             else:
-                raise(ValueError("Malformed starting reference designator"))
+                raise (ValueError("Malformed starting reference designator"))
             me = re.match(r"([a-z]+)([0-9]+)", stop_refdes, re.I)
             if me:
                 meps = me.groups()
             else:
-                raise(ValueError("Malformed ending reference designator"))
+                raise (ValueError("Malformed ending reference designator"))
 
             if msps[0] != meps[0]:
-                raise(ValueError("Starting and ending references designator prefixes don't match"))
-
+                raise (ValueError("Starting and ending references designator prefixes don't match"))
 
             for i in range(int(msps[1]), int(meps[1]) + 1):
                 expanded_list.append(msps[0] + str(i))
@@ -80,9 +74,10 @@ def expand_reference_designators(input_string):
     return expanded_str
 
 
-parser = argparse.ArgumentParser(description = 'BOM post processor for JLCPCB assembly services', prog = 'post-process-jlcpcb.py')
-parser.add_argument('infile',help='bommerge.py csv input file')
-parser.add_argument('outfile',help='JLCPCB csv output file')
+parser = argparse.ArgumentParser(description='BOM post processor for JLCPCB assembly services',
+                                 prog='post-process-jlcpcb.py')
+parser.add_argument('infile', help='bommerge.py csv input file')
+parser.add_argument('outfile', help='JLCPCB csv output file')
 
 # parse the args and die on error
 args = parser.parse_args()
@@ -143,7 +138,8 @@ for item in mfg_list:
             found = True
     if not found:
         missing_lcsc_part_numbers = True
-        print("Error: No LCSC part number found for item: {}, part number {}".format(int(item[0]["Item"]), item[0]["Part Number"]))
+        print("Error: No LCSC part number found for item: {}, part number {}".format(int(item[0]["Item"]),
+                                                                                     item[0]["Part Number"]))
 
 if missing_lcsc_part_numbers:
     sys.exit("Exiting due to missing LCSC part numbers")
@@ -164,7 +160,7 @@ for row in input_list:
 #
 
 with open(outfile, 'w', newline='') as csvoutfile:
-    fieldnames =["Comment", "Designator", "Footprint", "JLCPCB Part #"]
+    fieldnames = ["Comment", "Designator", "Footprint", "JLCPCB Part #"]
     writer = csv.DictWriter(csvoutfile, fieldnames=fieldnames)
     writer.writeheader()
     for row in output_data:
@@ -173,8 +169,3 @@ with open(outfile, 'w', newline='') as csvoutfile:
 # Done
 print("Conversion to LCSC format complete")
 sys.exit(0)
-
-
-
-
-
