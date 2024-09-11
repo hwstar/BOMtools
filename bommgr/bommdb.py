@@ -23,7 +23,7 @@ import sqlite3
 
 class BOMdb:
     """
-    A class to encapsulate all of the database operations for bommgr.py
+    A class to encapsulate the database operations for bommgr.py
     """
     def __init__(self, dbfile):
         self.conn = sqlite3.connect(dbfile)
@@ -31,6 +31,7 @@ class BOMdb:
 
         self.major = 0
         self.minor = 0
+
 
         self.cur.execute('SELECT major,minor FROM version')
         res = self.cur.fetchone()
@@ -50,10 +51,19 @@ class BOMdb:
         :param like:  Database matching string. Use % as a wild card
         :return: List of part numbers and descriptions
         """
+
         if like != None:
             self.cur.execute('SELECT Partnumber,Description FROM pndesc WHERE Description LIKE ? ORDER BY PartNumber ASC',[like])
         else:
             self.cur.execute('SELECT Partnumber,Description FROM pndesc ORDER BY PartNumber ASC')
+        return self.cur.fetchall()
+
+    def get_pnmpn(self):
+        """
+        Return entire pnmpn table contents
+        :return: List of rows with rows as tuples
+        """
+        self.cur.execute('SELECT Partnumber,Manufacturer,MPN,Datasheet FROM pnmpn ORDER BY PartNumber ASC')
         return self.cur.fetchall()
 
     def get_mfgrs(self, like=None):
@@ -81,6 +91,19 @@ class BOMdb:
         for item in res:
             mfgrs.append(item[0])
         return mfgrs
+
+    def get_mid_name_list(self):
+        """
+        Return a list of dictionary entries ordered by the manufacturer ID (mid).
+        :return: List of 2 element dictionaries containing keys mid, and mname
+        """
+        self.cur.execute('SELECT MFGid,MFGName FROM mlist ORDER BY MFGid ASC')
+        rows = self.cur.fetchall()
+        res = []
+        for row in rows:
+            res.append({"mid": row[0], "mname": row[1]})
+        return res
+
 
 
     def lookup_pn(self, pn):
@@ -382,6 +405,16 @@ class BOMdb:
         self.cur.execute('INSERT INTO pnmpn (PartNumber,Manufacturer,MPN) VALUES (?,?,?)',[pn, newmid, mpn])
         self.conn.commit()
 
+    def remove_mid(self, mid):
+        """
+        Remove a manufacturer ID from the MFGid table.
+
+        :param mid - manufacturer ID to remove
+        :return: Nothing
+        """
+        self.cur.execute('DELETE FROM mlist WHERE MFGid=?', [mid])
+        self.conn.commit()
+
 
     def remove_source(self, pn, mfgid, mpn):
         """
@@ -395,6 +428,56 @@ class BOMdb:
         """
         self.cur.execute('DELETE FROM pnmpn WHERE PartNumber=? AND Manufacturer=? AND MPN=? ', [pn, mfgid, mpn])
         self.conn.commit()
+
+
+    def remove_part_number(self, pn, dryrun = True, annotate=False):
+        """
+        Remove a part number from the pndesc table
+        Requires an explicit match on the part number
+
+        The approved manufacturer(s) will be removed from the pnmpn table, then the part number will be
+        removed from the pndesc table.
+
+        Return True if the part number was found and deleted.
+
+        """
+        if not self.lookup_pn(pn):
+            if annotate:
+                print("Part number: {} not found".format(pn))
+                return False
+
+        mfgrs = self.lookup_mpn_by_pn(pn)
+
+        if mfgrs:
+            # Remove all references to manufacturers
+            for mfgr in mfgrs:
+                mrec = self.lookup_mfg_by_id(mfgr["mid"])
+                # Do not remove Open Market manufacturer records
+                # Skip if there is no manufacturer record
+                if not mrec or mrec[0] == "Open Market" or mrec[0] == "None":
+                    if annotate:
+                        if mrec:
+                            print("Skipping mpn deletion due to Open Market/None manufacturer")
+                        else:
+                            print("Skipping mpn deletion due to manufacturer not found")
+                        continue
+                if annotate:
+                    print("Delete mpn: {}".format(mfgr["mpn"]))
+                if not dryrun:
+                    self.remove_source(pn, mfgr["mid"], mfgr["mpn"])
+
+            if annotate:
+                print("Delete Part Number: {}".format(pn))
+            if not dryrun:
+                # Delete pndesc record(s)
+                self.cur.execute('DELETE FROM pndesc WHERE PartNumber=?', [pn])
+                self.conn.commit()
+                # Delete pnmpn record
+                self.cur.execute('DELETE FROM pnmpn WHERE PartNumber=?', [pn])
+                self.conn.commit()
+        return True
+
+
 
 if __name__ == '__main__':
     print ("Database support module for BOMTools, not meant to be run on its own")
