@@ -62,8 +62,24 @@ def remove_flagged_parts():
 
     print("Parts removed")
 
+def make_list_of_dicts_from_list_of_lists(in_list_of_list: list, fieldnames: list):
+    """
+    Convert list of lists to list of dictionaries
+
+    :param in_list_of_list: list of lists to convert to list of dicts
+    :param fieldnames: fieldnames to use
+    :return: list of dicts
+    """
+    out_list_of_dicts = []
+    for item in in_list_of_list:
+        d = {fieldnames[index]: item[index] for index in range(len(item))}
+        out_list_of_dicts.append(d)
+    return out_list_of_dicts
+
+
+
 def check(fix = False, remove_deleted_pns=False, noprompt=False, test=False):
-    pnmpn = db.get_pnmpn()
+
 
     # Look for parts flagged for deletion
     print()
@@ -91,8 +107,8 @@ def check(fix = False, remove_deleted_pns=False, noprompt=False, test=False):
 
     print()
 
-    print ("Phase 2: Look for invalid Manufacturer ID references")
-
+    print("Phase 2: Look for invalid Manufacturer ID references")
+    pnmpn = db.get_pnmpn()
     index = 1
     invalid_manufacturer_ids = []
     for item in pnmpn:
@@ -127,6 +143,7 @@ def check(fix = False, remove_deleted_pns=False, noprompt=False, test=False):
     manuf_use_list = make_manuf_use_list()
 
     mids_to_delete = []
+    pnmpn = db.get_pnmpn()
 
     for item in pnmpn:
         for row in manuf_use_list:
@@ -155,6 +172,56 @@ def check(fix = False, remove_deleted_pns=False, noprompt=False, test=False):
                 for mid in mids_to_delete:
                     db.remove_mid(mid)
                 print("Unused manufacturer ID's removed")
+
+    print()
+    print("Phase 4: Check for orphaned parts")
+    parts_list = db.get_parts()
+    part_descriptions = make_list_of_dicts_from_list_of_lists(parts_list, ["PartNumber", "Description"])
+
+    pnnpn = db.get_pnmpn()
+    pn_to_mpns = make_list_of_dicts_from_list_of_lists(pnmpn, ["PartNumber", "Manufacturer", "MPN", "DataSheet"])
+    # Add reference count field
+    for pn_to_mpn in pn_to_mpns:
+        pn_to_mpn['reference_count'] = 0
+
+    for part_description in part_descriptions:
+        for pn_to_mpn in pn_to_mpns:
+            if part_description["PartNumber"] == pn_to_mpn["PartNumber"]:
+                pn_to_mpn["reference_count"] = pn_to_mpn["reference_count"] + 1
+
+    orphaned_parts = []
+    for pn_to_mpn in pn_to_mpns:
+        if not pn_to_mpn["reference_count"]:
+            orphaned_parts.append(pn_to_mpn["PartNumber"])
+
+    if orphaned_parts:
+        print("Orphaned parts found:")
+        for part in orphaned_parts:
+            print(part)
+
+    else:
+        print("No orphaned parts found")
+
+    if orphaned_parts and fix:
+        yes = False
+        if fix:
+            if not noprompt:
+                if click.confirm("Delete orphaned parts"):
+                    yes = True
+            else:
+                yes = True
+        if yes:
+            for part in orphaned_parts:
+                db.remove_pnmpn_record(part)
+
+            print("Orphaned parts removed")
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':

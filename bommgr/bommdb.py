@@ -429,6 +429,16 @@ class BOMdb:
         self.cur.execute('DELETE FROM pnmpn WHERE PartNumber=? AND Manufacturer=? AND MPN=? ', [pn, mfgid, mpn])
         self.conn.commit()
 
+    def remove_pnmpn_record(self, part_number):
+        """
+        Remove a part number to manufacturer number record
+
+        :param part_number:
+        :return: N/A
+        """
+        self.cur.execute("DELETE FROM pnmpn WHERE PartNumber=? ",[part_number])
+        self.conn.commit()
+
 
     def remove_part_number(self, pn, dryrun = True, annotate=False):
         """
