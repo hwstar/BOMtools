@@ -9,8 +9,6 @@ import bommdb
 defaultConfigLocations = ['/etc/bommgr/bommgr.conf', '~/.bommgr/bommgr.conf', 'bommgr.conf']
 
 
-
-
 def make_manuf_use_list():
     """
     Create manufacturer use list
@@ -20,6 +18,7 @@ def make_manuf_use_list():
     for item in mlist:
         item["reference_count"] = 0
     return mlist
+
 
 def get_parts_flagged_for_deletion():
     """
@@ -62,6 +61,7 @@ def remove_flagged_parts():
 
     print("Parts removed")
 
+
 def make_list_of_dicts_from_list_of_lists(in_list_of_list: list, fieldnames: list):
     """
     Convert list of lists to list of dictionaries
@@ -77,9 +77,17 @@ def make_list_of_dicts_from_list_of_lists(in_list_of_list: list, fieldnames: lis
     return out_list_of_dicts
 
 
+def check(fix=False, remove_deleted_pns=False, noprompt=False, test=False):
 
-def check(fix = False, remove_deleted_pns=False, noprompt=False, test=False):
-
+    def fix_prompt(fix_flag, prompt):
+        y = False
+        if fix_flag:
+            if not noprompt:
+                if click.confirm(prompt):
+                    y = True
+            else:
+                y = True
+        return y
 
     # Look for parts flagged for deletion
     print()
@@ -91,17 +99,10 @@ def check(fix = False, remove_deleted_pns=False, noprompt=False, test=False):
     if to_be_deleted:
         for item, pn in enumerate(to_be_deleted):
             print(f'{item:>5d}. {pn}')
-        if remove_deleted_pns:
-            yes = False
-            if not noprompt:
-                if click.confirm("Delete unused part numbers"):
-                    yes = True
-            else:
-                yes = True
-
-            if yes:
-                for pn in to_be_deleted:
-                    db.remove_part_number(pn, dryrun=False, annotate=True)
+        yes = fix_prompt(remove_deleted_pns, "Delete unused part numbers")
+        if yes:
+            for pn in to_be_deleted:
+                db.remove_part_number(pn, dryrun=False, annotate=True)
     else:
         print("No part numbers flagged for deletion")
 
@@ -119,19 +120,13 @@ def check(fix = False, remove_deleted_pns=False, noprompt=False, test=False):
             index = index + 1
 
     if test:
-        invalid_manufacturer_ids = []
+        invalid_manufacturer_ids = [{"mpn": "3T592", "mid": "M99999", "pn": "999999-101", "mname": "Widget co."}]
         # Bogus record for testing
-        invalid_manufacturer_ids.append({"mpn": "3T592", "mid": "M99999", "pn": "999999-101", "mname": "Widget co."})
+
     if not invalid_manufacturer_ids:
         print("No invalid manufacturer id's found")
     else:
-        yes = False
-        if fix:
-            if not noprompt:
-                if click.confirm("Delete invalid manufacturer ID references"):
-                    yes = True
-            else:
-                yes = True
+        yes = fix_prompt(fix, "Delete invalid manufacturer ID references")
         if yes:
             for iid in invalid_manufacturer_ids:
                 db.remove_source(iid["pn"], iid["mid"], iid["mpn"])
@@ -160,18 +155,11 @@ def check(fix = False, remove_deleted_pns=False, noprompt=False, test=False):
     if not mids_to_delete:
         print("No unused manufacturer ID's found")
     else:
-        if fix:
-            yes = False
-            if fix:
-                if not noprompt:
-                    if click.confirm("Delete unused manufacturer ID references"):
-                        yes = True
-                else:
-                    yes = True
-            if yes:
-                for mid in mids_to_delete:
-                    db.remove_mid(mid)
-                print("Unused manufacturer ID's removed")
+        yes = fix_prompt(fix, "Delete unused manufacturer ID references")
+        if yes:
+            for mid in mids_to_delete:
+                db.remove_mid(mid)
+            print("Unused manufacturer ID's removed")
 
     print()
     print("Phase 4: Check for orphaned parts")
@@ -202,26 +190,13 @@ def check(fix = False, remove_deleted_pns=False, noprompt=False, test=False):
     else:
         print("No orphaned parts found")
 
-    if orphaned_parts and fix:
-        yes = False
-        if fix:
-            if not noprompt:
-                if click.confirm("Delete orphaned parts"):
-                    yes = True
-            else:
-                yes = True
+    if orphaned_parts:
+        yes = fix_prompt(fix, "Delete orphaned parts")
         if yes:
             for part in orphaned_parts:
                 db.remove_pnmpn_record(part)
 
             print("Orphaned parts removed")
-
-
-
-
-
-
-
 
 
 if __name__ == '__main__':
@@ -262,7 +237,6 @@ if __name__ == '__main__':
         sys.exit("DB file: {} does not exist".format(dbpath))
     # Make connection to db
     db = bommdb.BOMdb(dbpath)
-
 
     check(fix=args.fix, remove_deleted_pns=args.remove_deleted_pns,  noprompt=args.noprompt)
 
